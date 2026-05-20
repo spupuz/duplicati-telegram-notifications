@@ -1,0 +1,2 @@
+# Exclude real Telegram credentials
+telegram_config.env
