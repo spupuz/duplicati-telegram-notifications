@@ -14,6 +14,8 @@ An optimized shell script designed to integrate rich, beautiful, and aesthetic T
 *   **Docker Ready**: Native fallback to global environment variables, allowing seamless integration inside Docker containers.
 *   **Windows CRLF Safe**: Robust handling of carriage return line endings to prevent syntax errors when running cross-platform.
 *   **Rich HTML Formatting**: Clean, styled notifications utilizing Telegram HTML format with status-specific icons (✅, ⚠️, ❌, 💥) for instant overview.
+*   **Duration Tracking**: Displays the backup duration (⏱) directly in the notification.
+*   **Auto-Update**: Automatically checks GitHub for newer versions on each run and updates itself.
 
 ---
 
@@ -48,6 +50,26 @@ Configure the script to run before or after your backup operations directly via 
     `--run-script-after = /path/to/notify_to_telegram.sh`
 *   **Before backups**:
     `--run-script-before = /path/to/notify_to_telegram.sh`
+
+---
+
+## 🔄 Auto-Update
+
+The script automatically checks for new versions on GitHub at each run. If a newer version is found, it downloads and replaces itself transparently before executing.
+
+### Disable auto-update
+
+Set the `SKIP_UPDATE` environment variable to skip the update check:
+
+```bash
+SKIP_UPDATE=1 ./notify_to_telegram.sh
+```
+
+Or export it in your environment / `telegram_config.env`:
+
+```env
+SKIP_UPDATE=1
+```
 
 ---
 
