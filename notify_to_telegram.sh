@@ -25,6 +25,11 @@
 
 # 1. Locate the script directory to load the relative configuration file
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_FILE="$(basename "${BASH_SOURCE[0]}")"
+SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_FILE"
+
+SCRIPT_VERSION="1.0"
+GITHUB_RAW_BASE="https://raw.githubusercontent.com/spupuz/duplicati-telegram-notifications/main"
 CONFIG_FILE="${SCRIPT_DIR}/telegram_config.env"
 
 # 2. Load variables from config file if it exists, cleaning Windows CRLF line endings (\r)
@@ -41,6 +46,31 @@ if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHATID" ]; then
 fi
 
 TELEGRAM_URL="https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage"
+
+# Auto-update: check GitHub for a newer version and replace itself
+auto_update() {
+    local latest_version tmp_script
+    latest_version=$(curl -s --max-time 5 "$GITHUB_RAW_BASE/version.txt" 2>/dev/null | tr -d '\r\n')
+    [ -z "$latest_version" ] && return
+
+    if [ "$latest_version" != "$SCRIPT_VERSION" ] && [ "$(printf '%s\n' "$SCRIPT_VERSION" "$latest_version" | sort -V | tail -1)" = "$latest_version" ]; then
+        tmp_script=$(mktemp)
+        if curl -s --max-time 10 -o "$tmp_script" "$GITHUB_RAW_BASE/notify_to_telegram.sh" 2>/dev/null && [ -s "$tmp_script" ]; then
+            head -1 "$tmp_script" | grep -q "^#!/bin/bash" || { rm -f "$tmp_script"; return; }
+            if ! diff -q "$tmp_script" "$SCRIPT_PATH" &>/dev/null; then
+                cp "$tmp_script" "$SCRIPT_PATH" && chmod +x "$SCRIPT_PATH"
+                rm -f "$tmp_script"
+                exec "$SCRIPT_PATH" "$@"
+            fi
+        fi
+        rm -f "$tmp_script"
+    fi
+}
+
+# Run auto-update synchronously (short timeouts: ~5s max if no update, ~15s for full update)
+if [ -z "$SKIP_UPDATE" ] && command -v curl &>/dev/null; then
+    auto_update "$@"
+fi
 
 # Function to convert file sizes to human-readable format
 function getFriendlyFileSize() {
