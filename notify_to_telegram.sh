@@ -76,6 +76,8 @@ function getResultLine () {
 ⚙️ <b>Operation:</b> $DUPLICATI__OPERATIONNAME
 📊 <b>Status:</b>    $CURRENT_STATUS
 ${RESULT_ICON} <b>Result:</b>    $DUPLICATI__PARSED_RESULT
+———————————————————————————————
+⏱ <b>Duration:</b>  $Duration
 ———————————————————————————————"
     echo "$output" | sed 's/^[ \t]*//;s/[ \t]*$//'
 }
@@ -127,6 +129,8 @@ if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
 
 # Generate message content
 if [ "$DUPLICATI__EVENTNAME" == "AFTER" ]; then
+    Duration=$(grep -oP '^Duration:\s*\K.*' "$DUPLICATI__RESULTFILE" | sed 's/\.[0-9]*$//' | tr -d '\r')
+    [ -z "$Duration" ] && Duration="--:--:--"
     MESSAGE=$(getResultLine)
     if [ "$DUPLICATI__OPERATIONNAME" == "Restore" ]; then
         MESSAGE+=$(getOperationRestore)
