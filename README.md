@@ -73,6 +73,14 @@ SKIP_UPDATE=1
 
 ---
 
+## ☕ Support
+
+If this project has been useful to you, consider buying me a coffee to support its development:
+
+[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/spupuz)
+
+---
+
 ## ⚖️ Disclaimer (AS IS)
 
 > [!WARNING]

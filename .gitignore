@@ -1,3 +1,4 @@
 # Exclude real Telegram credentials
 telegram_config.env
 .kilo/
+.opencode/
