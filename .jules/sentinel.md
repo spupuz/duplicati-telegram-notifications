@@ -1,0 +1,4 @@
+## 2024-05-31 - [Command Injection via Insecure Eval Parsing]
+**Vulnerability:** The `notify_to_telegram.sh` script used `eval $(sed ...)` to dynamically parse configuration variables out of an external `DUPLICATI__RESULTFILE`. If an attacker could inject shell commands into the values within the file, the `eval` statement executed them.
+**Learning:** Parsing key-value pairs from text files using `eval` and `sed` in bash is a well-known anti-pattern and highly susceptible to command injection if file inputs are untrusted.
+**Prevention:** Avoid `eval` for parsing configurations. Always use built-in shell functionality like a `while IFS=':' read -r key value` loop combined with regex validation for the key (e.g., `[[ "$key" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]`) and `printf -v "$key" "%s" "$value"` for safe dynamic variable assignment.
