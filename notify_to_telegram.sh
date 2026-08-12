@@ -97,8 +97,18 @@ function getFriendlyFileSize() {
 
 # Function to generate the result line with appropriate icon
 function getResultLine () {
-    CURRENT_STATUS=`echo "BEFORE=Started,AFTER=Finished" | sed "s/.*$DUPLICATI__EVENTNAME=\([^,]*\).*/\1/"`
-    RESULT_ICON=`echo "Unknown=🟣,Success=✅,Warning=⚠️,Error=❌,Fatal=💥" | sed "s/.*$DUPLICATI__PARSED_RESULT=\([^,]*\).*/\1/"`
+    case "$DUPLICATI__EVENTNAME" in
+        BEFORE) CURRENT_STATUS="Started" ;;
+        AFTER) CURRENT_STATUS="Finished" ;;
+        *) CURRENT_STATUS="$DUPLICATI__EVENTNAME" ;;
+    esac
+    case "$DUPLICATI__PARSED_RESULT" in
+        Success) RESULT_ICON="✅" ;;
+        Warning) RESULT_ICON="⚠️" ;;
+        Error) RESULT_ICON="❌" ;;
+        Fatal) RESULT_ICON="💥" ;;
+        *) RESULT_ICON="🟣" ;; # Default/Unknown
+    esac
     local output="<b>💾 DUPLICATI BACKUP</b>
 <pre>
 ———————————————————————————————
@@ -170,7 +180,11 @@ if [ "$DUPLICATI__EVENTNAME" == "AFTER" ]; then
         MESSAGE+=$(getOperationBackup)
     fi
 else
-    CURRENT_STATUS=`echo "BEFORE=Started,AFTER=Finished" | sed "s/.*$DUPLICATI__EVENTNAME=\([^,]*\).*/\1/"`
+    case "$DUPLICATI__EVENTNAME" in
+        BEFORE) CURRENT_STATUS="Started" ;;
+        AFTER) CURRENT_STATUS="Finished" ;;
+        *) CURRENT_STATUS="$DUPLICATI__EVENTNAME" ;;
+    esac
     MESSAGE="<b>💾 DUPLICATI BACKUP</b>
 <pre>
 ———————————————————————————————

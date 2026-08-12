@@ -1,0 +1,3 @@
+## 2024-05-18 - Bash Subshell/Fork Performance Overhead
+**Learning:** Using `echo "..." | sed "..."` wrapped in backticks/subshells for simple string mapping introduces significant fork overhead in bash (launching multiple processes like `echo`, `sed` and the subshell). In benchmarks, this was ~200x slower than using native bash `case` statements. This is particularly relevant for scripts running on low-power NAS devices often used for Duplicati backups.
+**Action:** Always prefer native bash built-ins (like `case` or variable substitution) over external commands (`sed`, `grep`, `awk`) combined with subshells for simple string manipulation or mapping to improve execution speed.
