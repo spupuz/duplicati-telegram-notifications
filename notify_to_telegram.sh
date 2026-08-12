@@ -95,6 +95,19 @@ function getFriendlyFileSize() {
     fi
 }
 
+# Securely parse the result file to avoid command injection
+function parseResultFile () {
+    [ -f "$DUPLICATI__RESULTFILE" ] || return
+    while IFS=':' read -r key val || [ -n "$key" ]; do
+        key="${key//[[:space:]]/}"
+        val="${val#"${val%%[![:space:]]*}"}"
+        val="${val%$'\r'}"
+        if [[ "$key" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+            printf -v "$key" "%s" "$val"
+        fi
+    done < "$DUPLICATI__RESULTFILE"
+}
+
 # Function to generate the result line with appropriate icon
 function getResultLine () {
     CURRENT_STATUS=`echo "BEFORE=Started,AFTER=Finished" | sed "s/.*$DUPLICATI__EVENTNAME=\([^,]*\).*/\1/"`
@@ -114,7 +127,7 @@ ${RESULT_ICON} <b>Result:</b>    $DUPLICATI__PARSED_RESULT
 
 # Function to handle fatal errors
 function getResultFatal () {
-    eval `sed -n "s/^\(\w*\):\s*\([^\"]*\)$/\1=\"\2\"/p" $DUPLICATI__RESULTFILE`
+    parseResultFile
     local output="
 ❗ <b>Error:</b> $Failed
 📋 <b>Details:</b> $Details"
@@ -123,7 +136,7 @@ function getResultFatal () {
 
 # Function to handle restore operations
 function getOperationRestore () {
-    eval `sed -n "s/^\(\w*\):\s*\(\w*\)$/\1=\2/p" $DUPLICATI__RESULTFILE`
+    parseResultFile
     local output="
 📂 <b>FILES:</b>         count       size
 📥 <b>Restored:</b>     $(printf %7s $RestoredFiles) $(printf %10s $(getFriendlyFileSize $SizeOfRestoredFiles))
@@ -138,7 +151,7 @@ function getOperationRestore () {
 
 # Function to handle backup operations
 function getOperationBackup () {
-    eval `sed -n "s/^\(\w*\):\s*\(\w*\)$/\1=\2/p" $DUPLICATI__RESULTFILE`
+    parseResultFile
     local output="
 📂 <b>FILES:</b>         count       size
 ➕ <b>Added:</b>        $(printf %7s $AddedFiles) $(printf %10s $(getFriendlyFileSize $SizeOfAddedFiles))
