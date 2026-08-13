@@ -114,7 +114,14 @@ ${RESULT_ICON} <b>Result:</b>    $DUPLICATI__PARSED_RESULT
 
 # Function to handle fatal errors
 function getResultFatal () {
-    eval `sed -n "s/^\(\w*\):\s*\([^\"]*\)$/\1=\"\2\"/p" $DUPLICATI__RESULTFILE`
+    local key val
+    while IFS=':' read -r key val; do
+        if [[ "$key" =~ ^[a-zA-Z0-9_]+$ ]]; then
+            val=$(echo "$val" | sed 's/^[ \t]*//;s/[ \t]*$//' | tr -d '\r')
+            printf -v "$key" "%s" "$val"
+        fi
+    done < "$DUPLICATI__RESULTFILE"
+
     local output="
 ❗ <b>Error:</b> $Failed
 📋 <b>Details:</b> $Details"
@@ -123,7 +130,14 @@ function getResultFatal () {
 
 # Function to handle restore operations
 function getOperationRestore () {
-    eval `sed -n "s/^\(\w*\):\s*\(\w*\)$/\1=\2/p" $DUPLICATI__RESULTFILE`
+    local key val
+    while IFS=':' read -r key val; do
+        if [[ "$key" =~ ^[a-zA-Z0-9_]+$ ]]; then
+            val=$(echo "$val" | sed 's/^[ \t]*//;s/[ \t]*$//' | tr -d '\r')
+            printf -v "$key" "%s" "$val"
+        fi
+    done < "$DUPLICATI__RESULTFILE"
+
     local output="
 📂 <b>FILES:</b>         count       size
 📥 <b>Restored:</b>     $(printf %7s $RestoredFiles) $(printf %10s $(getFriendlyFileSize $SizeOfRestoredFiles))
@@ -138,7 +152,14 @@ function getOperationRestore () {
 
 # Function to handle backup operations
 function getOperationBackup () {
-    eval `sed -n "s/^\(\w*\):\s*\(\w*\)$/\1=\2/p" $DUPLICATI__RESULTFILE`
+    local key val
+    while IFS=':' read -r key val; do
+        if [[ "$key" =~ ^[a-zA-Z0-9_]+$ ]]; then
+            val=$(echo "$val" | sed 's/^[ \t]*//;s/[ \t]*$//' | tr -d '\r')
+            printf -v "$key" "%s" "$val"
+        fi
+    done < "$DUPLICATI__RESULTFILE"
+
     local output="
 📂 <b>FILES:</b>         count       size
 ➕ <b>Added:</b>        $(printf %7s $AddedFiles) $(printf %10s $(getFriendlyFileSize $SizeOfAddedFiles))
