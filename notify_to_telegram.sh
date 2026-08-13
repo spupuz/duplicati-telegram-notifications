@@ -97,8 +97,23 @@ function getFriendlyFileSize() {
 
 # Function to generate the result line with appropriate icon
 function getResultLine () {
-    CURRENT_STATUS=`echo "BEFORE=Started,AFTER=Finished" | sed "s/.*$DUPLICATI__EVENTNAME=\([^,]*\).*/\1/"`
-    RESULT_ICON=`echo "Unknown=🟣,Success=✅,Warning=⚠️,Error=❌,Fatal=💥" | sed "s/.*$DUPLICATI__PARSED_RESULT=\([^,]*\).*/\1/"`
+    # ⚡ Bolt: Replaced subshell and external sed process with native bash case statements for string mapping.
+    # This avoids spawning 4 external processes (echo, sed) and reduces execution time.
+    case "$DUPLICATI__EVENTNAME" in
+        BEFORE) CURRENT_STATUS="Started" ;;
+        AFTER) CURRENT_STATUS="Finished" ;;
+        *) CURRENT_STATUS="$DUPLICATI__EVENTNAME" ;;
+    esac
+
+    case "$DUPLICATI__PARSED_RESULT" in
+        Unknown) RESULT_ICON="🟣" ;;
+        Success) RESULT_ICON="✅" ;;
+        Warning) RESULT_ICON="⚠️" ;;
+        Error) RESULT_ICON="❌" ;;
+        Fatal) RESULT_ICON="💥" ;;
+        *) RESULT_ICON="🟣" ;;
+    esac
+
     local output="<b>💾 DUPLICATI BACKUP</b>
 <pre>
 ———————————————————————————————
@@ -170,7 +185,13 @@ if [ "$DUPLICATI__EVENTNAME" == "AFTER" ]; then
         MESSAGE+=$(getOperationBackup)
     fi
 else
-    CURRENT_STATUS=`echo "BEFORE=Started,AFTER=Finished" | sed "s/.*$DUPLICATI__EVENTNAME=\([^,]*\).*/\1/"`
+    # ⚡ Bolt: Replaced subshell and external sed process with native bash case statement for string mapping
+    # to prevent process spawning overhead.
+    case "$DUPLICATI__EVENTNAME" in
+        BEFORE) CURRENT_STATUS="Started" ;;
+        AFTER) CURRENT_STATUS="Finished" ;;
+        *) CURRENT_STATUS="$DUPLICATI__EVENTNAME" ;;
+    esac
     MESSAGE="<b>💾 DUPLICATI BACKUP</b>
 <pre>
 ———————————————————————————————

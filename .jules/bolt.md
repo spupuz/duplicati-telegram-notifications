@@ -1,0 +1,3 @@
+## 2024-08-13 - [Subshells for String Mapping]
+**Learning:** Using subshells with `echo` and `sed` (`echo "a=1,b=2" | sed ...`) for simple string mapping is a severe anti-pattern in Bash scripts. Spawning multiple external processes for such a simple task is incredibly slow. My benchmark showed a ~750x speedup by replacing it with a native `case` statement.
+**Action:** Always prefer native Bash constructs like `case`, `if/else`, and parameter expansion (`${var/pattern/replacement}`) over piping output to external tools (`sed`, `awk`, `grep`, `echo`) when dealing with simple string manipulation or mapping.
