@@ -80,16 +80,24 @@ function getFriendlyFileSize() {
             size=0
             ;;
     esac
+
+    # ⚡ Bolt Optimization: Replaced `awk` subshells with native bash integer arithmetic.
+    # Native bash math (`$((...))`) avoids the overhead of forking external `awk` processes,
+    # which is significantly faster when formatting multiple sizes per run.
     if [ "$size" -eq 0 ]; then
         echo '-'
     elif [ "$size" -ge 1099511627776 ]; then
-        awk 'BEGIN {printf "%.1f",'$size'/1099511627776}' && echo 'Tb'
+        local num=$(( (size * 100 / 1099511627776 + 5) / 10 ))
+        echo "${num%?}.${num: -1}Tb"
     elif [ "$size" -ge 1073741824 ]; then
-        awk 'BEGIN {printf "%.1f",'$size'/1073741824}' && echo 'Gb'
+        local num=$(( (size * 100 / 1073741824 + 5) / 10 ))
+        echo "${num%?}.${num: -1}Gb"
     elif [ "$size" -ge 1048576 ]; then
-        awk 'BEGIN {printf "%.1f",'$size'/1048576}' && echo 'Mb'
+        local num=$(( (size * 100 / 1048576 + 5) / 10 ))
+        echo "${num%?}.${num: -1}Mb"
     elif [ "$size" -ge 1024 ]; then
-        awk 'BEGIN {printf "%.1f",'$size'/1024}' && echo 'Kb'
+        local num=$(( (size * 100 / 1024 + 5) / 10 ))
+        echo "${num%?}.${num: -1}Kb"
     else
         echo '-'
     fi
