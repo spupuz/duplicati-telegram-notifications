@@ -216,6 +216,6 @@ fi
 # Send message to Telegram with HTML formatting
 MESSAGE+="
 </pre>"
-curl -s $TELEGRAM_URL -d chat_id=$TELEGRAM_CHATID -d text="$MESSAGE" -d parse_mode="HTML" -k > /dev/null
+curl -s "$TELEGRAM_URL" -d chat_id="$TELEGRAM_CHATID" -d text="$MESSAGE" -d parse_mode="HTML" > /dev/null
 
 exit 0
