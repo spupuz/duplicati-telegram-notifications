@@ -187,7 +187,7 @@ if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
 
 # Generate message content
 if [ "$DUPLICATI__EVENTNAME" == "AFTER" ]; then
-    Duration=$(grep -oP '^Duration:\s*\K.*' "$DUPLICATI__RESULTFILE" | sed 's/\.[0-9]*$//' | tr -d '\r')
+    Duration=$(grep -oP '^Duration:\s*\K.*' -- "$DUPLICATI__RESULTFILE" | sed 's/\.[0-9]*$//' | tr -d '\r')
     [ -z "$Duration" ] && Duration="--:--:--"
     MESSAGE=$(getResultLine)
     if [ "$DUPLICATI__OPERATIONNAME" == "Restore" ]; then
@@ -216,6 +216,6 @@ fi
 # Send message to Telegram with HTML formatting
 MESSAGE+="
 </pre>"
-curl -s $TELEGRAM_URL -d chat_id=$TELEGRAM_CHATID -d text="$MESSAGE" -d parse_mode="HTML" -k > /dev/null
+curl -s "$TELEGRAM_URL" -d chat_id="$TELEGRAM_CHATID" -d text="$MESSAGE" -d parse_mode="HTML" > /dev/null
 
 exit 0
