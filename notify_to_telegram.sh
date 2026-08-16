@@ -28,7 +28,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_FILE="$(basename "${BASH_SOURCE[0]}")"
 SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_FILE"
 
-SCRIPT_VERSION="1.0.1"
+SCRIPT_VERSION="1.0.2"
 GITHUB_RAW_BASE="https://raw.githubusercontent.com/spupuz/duplicati-telegram-notifications/main"
 CONFIG_FILE="${SCRIPT_DIR}/telegram_config.env"
 
