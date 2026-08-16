@@ -28,7 +28,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_FILE="$(basename "${BASH_SOURCE[0]}")"
 SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_FILE"
 
-SCRIPT_VERSION="1.0.2"
+SCRIPT_VERSION="1.0.3"
 GITHUB_RAW_BASE="https://raw.githubusercontent.com/spupuz/duplicati-telegram-notifications/main"
 CONFIG_FILE="${SCRIPT_DIR}/telegram_config.env"
 
@@ -60,6 +60,7 @@ auto_update() {
             if ! diff -q "$tmp_script" "$SCRIPT_PATH" &>/dev/null; then
                 cp "$tmp_script" "$SCRIPT_PATH" && chmod +x "$SCRIPT_PATH"
                 rm -f "$tmp_script"
+                export UPDATED_FROM_VERSION="$SCRIPT_VERSION"
                 exec "$SCRIPT_PATH" "$@"
             fi
         fi
@@ -68,7 +69,8 @@ auto_update() {
 }
 
 # Run auto-update synchronously (short timeouts: ~5s max if no update, ~15s for full update)
-if [ -z "$SKIP_UPDATE" ] && command -v curl &>/dev/null; then
+# Enabled by default; disable with AUTO_UPDATE="false" in telegram_config.env (or legacy SKIP_UPDATE=1 env var)
+if [ "${AUTO_UPDATE:-true}" = "true" ] && [ -z "$SKIP_UPDATE" ] && command -v curl &>/dev/null; then
     auto_update "$@"
 fi
 
@@ -222,6 +224,14 @@ fi
 # Send message to Telegram with HTML formatting
 MESSAGE+="
 </pre>"
+
+# Append script version info to the message
+if [ -n "$UPDATED_FROM_VERSION" ] && [ "$UPDATED_FROM_VERSION" != "$SCRIPT_VERSION" ]; then
+    MESSAGE+="🔄 <b>Script updated:</b> v${UPDATED_FROM_VERSION} → v${SCRIPT_VERSION}"
+else
+    MESSAGE+="⚙️ <b>Script version:</b> v${SCRIPT_VERSION}"
+fi
+
 curl -s "$TELEGRAM_URL" -d chat_id="$TELEGRAM_CHATID" --data-urlencode "text=$MESSAGE" -d parse_mode="HTML" > /dev/null
 
 exit 0

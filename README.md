@@ -15,7 +15,8 @@ An optimized shell script designed to integrate rich, beautiful, and aesthetic T
 *   **Windows CRLF Safe**: Robust handling of carriage return line endings to prevent syntax errors when running cross-platform.
 *   **Rich HTML Formatting**: Clean, styled notifications utilizing Telegram HTML format with status-specific icons (✅, ⚠️, ❌, 💥) for instant overview.
 *   **Duration Tracking**: Displays the backup duration (⏱) directly in the notification.
-*   **Auto-Update**: Automatically checks GitHub for newer versions on each run and updates itself.
+*   **Auto-Update**: Automatically checks GitHub for newer versions on each run and updates itself (can be disabled via `AUTO_UPDATE="false"`).
+*   **Version Awareness**: Every notification reports the running script version and, when the script has just auto-updated, shows the exact version transition (e.g. `v1.0.1 → v1.0.2`).
 
 ---
 
@@ -55,11 +56,17 @@ Configure the script to run before or after your backup operations directly via 
 
 ## 🔄 Auto-Update
 
-The script automatically checks for new versions on GitHub at each run. If a newer version is found, it downloads and replaces itself transparently before executing.
+The script automatically checks for new versions on GitHub at each run. If a newer version is found, it downloads and replaces itself transparently before executing. When the script updates itself, the notification reports the version transition (e.g. `🔄 Script updated: v1.0.1 → v1.0.2`); otherwise it shows the current version (e.g. `⚙️ Script version: v1.0.2`).
 
-### Disable auto-update
+### Enable / disable auto-update
 
-Set the `SKIP_UPDATE` environment variable to skip the update check:
+Auto-update is **enabled by default**. To disable it, set `AUTO_UPDATE="false"` in your `telegram_config.env`:
+
+```env
+AUTO_UPDATE="false"
+```
+
+The legacy `SKIP_UPDATE` environment variable is still supported and also disables the check:
 
 ```bash
 SKIP_UPDATE=1 ./notify_to_telegram.sh
