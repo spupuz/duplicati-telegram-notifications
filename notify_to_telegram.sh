@@ -75,21 +75,27 @@ fi
 # Function to convert file sizes to human-readable format
 function getFriendlyFileSize() {
     local size="$1"
+    local val
     case "$size" in
         ''|*[!0-9]*)
             size=0
             ;;
     esac
+    # ⚡ Bolt Optimization: Replaced awk subshells with native bash integer arithmetic to prevent fork/exec overhead.
     if [ "$size" -eq 0 ]; then
         echo '-'
     elif [ "$size" -ge 1099511627776 ]; then
-        awk 'BEGIN {printf "%.1f",'$size'/1099511627776}' && echo 'Tb'
+        val=$(( (size * 100 / 1099511627776 + 5) / 10 ))
+        echo "$((val / 10)).$((val % 10))Tb"
     elif [ "$size" -ge 1073741824 ]; then
-        awk 'BEGIN {printf "%.1f",'$size'/1073741824}' && echo 'Gb'
+        val=$(( (size * 100 / 1073741824 + 5) / 10 ))
+        echo "$((val / 10)).$((val % 10))Gb"
     elif [ "$size" -ge 1048576 ]; then
-        awk 'BEGIN {printf "%.1f",'$size'/1048576}' && echo 'Mb'
+        val=$(( (size * 100 / 1048576 + 5) / 10 ))
+        echo "$((val / 10)).$((val % 10))Mb"
     elif [ "$size" -ge 1024 ]; then
-        awk 'BEGIN {printf "%.1f",'$size'/1024}' && echo 'Kb'
+        val=$(( (size * 100 / 1024 + 5) / 10 ))
+        echo "$((val / 10)).$((val % 10))Kb"
     else
         echo '-'
     fi
