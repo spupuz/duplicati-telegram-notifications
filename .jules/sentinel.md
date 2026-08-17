@@ -12,3 +12,8 @@
 **Vulnerability:** Parameter injection in curl request to Telegram API.
 **Learning:** The script constructed the curl payload using `-d text="$MESSAGE"`. If the backup information (e.g. backup name or parsed results) contained characters like `&` and `=`, an attacker could inject arbitrary parameters into the API request (such as `chat_id=ATTACKER_ID`), potentially redirecting notifications or manipulating the API call.
 **Prevention:** Always URL-encode untrusted data before passing it to cURL as POST data. Use `--data-urlencode "text=$MESSAGE"` instead of `-d text="$MESSAGE"`.
+
+## 2026-08-20 - Environment Variable Injection via Dynamic Variable Assignment
+**Vulnerability:** In `notify_to_telegram.sh`, the `parseResultFile` function read keys and values from a result file and dynamically assigned them to bash variables using `printf -v "$key" "%s" "$val"`. Because `$key` was taken directly from the file content (which could be influenced by external input or manipulated), an attacker could overwrite critical shell variables (like `PATH`, `TELEGRAM_TOKEN`, or `TELEGRAM_URL`), potentially leading to local privilege escalation or arbitrary code execution.
+**Learning:** Dynamic variable assignment using untrusted input is dangerous in bash, as it shares the same namespace as environment and internal shell variables.
+**Prevention:** Always namespace dynamically generated variables (e.g., prefixing them with `RES_`) to prevent collision with system or script-critical variables, or use associative arrays if the bash version supports them.

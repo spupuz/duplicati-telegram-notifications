@@ -111,7 +111,7 @@ function parseResultFile () {
         val="${val#"${val%%[![:space:]]*}"}"
         val="${val%$'\r'}"
         if [[ "$key" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
-            printf -v "$key" "%s" "$val"
+            printf -v "RES_$key" "%s" "$val"
         fi
     done < "$DUPLICATI__RESULTFILE"
 }
@@ -152,8 +152,8 @@ ${RESULT_ICON} <b>Result:</b>    $DUPLICATI__PARSED_RESULT
 function getResultFatal () {
     parseResultFile
     local output="
-❗ <b>Error:</b> $Failed
-📋 <b>Details:</b> $Details"
+❗ <b>Error:</b> $RES_Failed
+📋 <b>Details:</b> $RES_Details"
     echo "$output" | sed 's/^[ \t]*//;s/[ \t]*$//'
 }
 
@@ -162,13 +162,13 @@ function getOperationRestore () {
     parseResultFile
     local output="
 📂 <b>FILES:</b>         count       size
-📥 <b>Restored:</b>     $(printf %7s $RestoredFiles) $(printf %10s $(getFriendlyFileSize $SizeOfRestoredFiles))
-🗑️ <b>Deleted:</b>      $(printf %7s $DeletedFiles) $(printf %10s $(getFriendlyFileSize 0))
-🛠️ <b>Patched:</b>      $(printf %7s $PatchedFiles) $(printf %10s $(getFriendlyFileSize 0))
+📥 <b>Restored:</b>     $(printf %7s $RES_RestoredFiles) $(printf %10s $(getFriendlyFileSize $RES_SizeOfRestoredFiles))
+🗑️ <b>Deleted:</b>      $(printf %7s $RES_DeletedFiles) $(printf %10s $(getFriendlyFileSize 0))
+🛠️ <b>Patched:</b>      $(printf %7s $RES_PatchedFiles) $(printf %10s $(getFriendlyFileSize 0))
 ———————————————————————————————
 📁 <b>FOLDERS:</b>
-📂 <b>Restored:</b>     $(printf %7s $RestoredFolders) $(printf %10s $(getFriendlyFileSize 0))
-🗑️ <b>Deleted:</b>      $(printf %7s $DeletedFolders) $(printf %10s $(getFriendlyFileSize 0))"
+📂 <b>Restored:</b>     $(printf %7s $RES_RestoredFolders) $(printf %10s $(getFriendlyFileSize 0))
+🗑️ <b>Deleted:</b>      $(printf %7s $RES_DeletedFolders) $(printf %10s $(getFriendlyFileSize 0))"
     echo "$output" | sed 's/^[ \t]*//;s/[ \t]*$//'
 }
 
@@ -177,16 +177,16 @@ function getOperationBackup () {
     parseResultFile
     local output="
 📂 <b>FILES:</b>         count       size
-➕ <b>Added:</b>        $(printf %7s $AddedFiles) $(printf %10s $(getFriendlyFileSize $SizeOfAddedFiles))
-➖ <b>Deleted:</b>      $(printf %7s $DeletedFiles) $(printf %10s $(getFriendlyFileSize 0))
-🔧 <b>Changed:</b>      $(printf %7s $ModifiedFiles) $(printf %10s $(getFriendlyFileSize $SizeOfModifiedFiles))
-🔍 <b>Opened:</b>       $(printf %7s $OpenedFiles) $(printf %10s $(getFriendlyFileSize $SizeOfOpenedFiles))
-🔎 <b>Examined:</b>     $(printf %7s $ExaminedFiles) $(printf %10s $(getFriendlyFileSize $SizeOfExaminedFiles))
+➕ <b>Added:</b>        $(printf %7s $RES_AddedFiles) $(printf %10s $(getFriendlyFileSize $RES_SizeOfAddedFiles))
+➖ <b>Deleted:</b>      $(printf %7s $RES_DeletedFiles) $(printf %10s $(getFriendlyFileSize 0))
+🔧 <b>Changed:</b>      $(printf %7s $RES_ModifiedFiles) $(printf %10s $(getFriendlyFileSize $RES_SizeOfModifiedFiles))
+🔍 <b>Opened:</b>       $(printf %7s $RES_OpenedFiles) $(printf %10s $(getFriendlyFileSize $RES_SizeOfOpenedFiles))
+🔎 <b>Examined:</b>     $(printf %7s $RES_ExaminedFiles) $(printf %10s $(getFriendlyFileSize $RES_SizeOfExaminedFiles))
 ———————————————————————————————
 📁 <b>FOLDERS:</b>
-➕ <b>Added:</b>        $(printf %7s $AddedFolders) $(printf %10s $(getFriendlyFileSize 0))
-➖ <b>Deleted:</b>      $(printf %7s $DeletedFolders) $(printf %10s $(getFriendlyFileSize 0))
-🔧 <b>Changed:</b>      $(printf %7s $ModifiedFolders) $(printf %10s $(getFriendlyFileSize 0))"
+➕ <b>Added:</b>        $(printf %7s $RES_AddedFolders) $(printf %10s $(getFriendlyFileSize 0))
+➖ <b>Deleted:</b>      $(printf %7s $RES_DeletedFolders) $(printf %10s $(getFriendlyFileSize 0))
+🔧 <b>Changed:</b>      $(printf %7s $RES_ModifiedFolders) $(printf %10s $(getFriendlyFileSize 0))"
     echo "$output" | sed 's/^[ \t]*//;s/[ \t]*$//'
 }
 
