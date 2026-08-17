@@ -150,7 +150,6 @@ ${RESULT_ICON} <b>Result:</b>    $DUPLICATI__PARSED_RESULT
 
 # Function to handle fatal errors
 function getResultFatal () {
-    parseResultFile
     local output="
 ❗ <b>Error:</b> $Failed
 📋 <b>Details:</b> $Details"
@@ -159,7 +158,6 @@ function getResultFatal () {
 
 # Function to handle restore operations
 function getOperationRestore () {
-    parseResultFile
     local output="
 📂 <b>FILES:</b>         count       size
 📥 <b>Restored:</b>     $(printf %7s $RestoredFiles) $(printf %10s $(getFriendlyFileSize $SizeOfRestoredFiles))
@@ -174,7 +172,6 @@ function getOperationRestore () {
 
 # Function to handle backup operations
 function getOperationBackup () {
-    parseResultFile
     local output="
 📂 <b>FILES:</b>         count       size
 ➕ <b>Added:</b>        $(printf %7s $AddedFiles) $(printf %10s $(getFriendlyFileSize $SizeOfAddedFiles))
@@ -195,7 +192,10 @@ if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
 
 # Generate message content
 if [ "$DUPLICATI__EVENTNAME" == "AFTER" ]; then
-    Duration=$(grep -oP '^Duration:\s*\K.*' -- "$DUPLICATI__RESULTFILE" | sed 's/\.[0-9]*$//' | tr -d '\r')
+    # ⚡ Bolt Optimization: Call parseResultFile once globally to avoid redundant disk I/O,
+    # and use native bash parameter expansion to extract Duration without expensive grep/sed/tr subshells.
+    parseResultFile
+    Duration="${Duration%%.*}"
     [ -z "$Duration" ] && Duration="--:--:--"
     MESSAGE=$(getResultLine)
     if [ "$DUPLICATI__OPERATIONNAME" == "Restore" ]; then
