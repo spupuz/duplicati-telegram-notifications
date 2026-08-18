@@ -28,7 +28,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_FILE="$(basename "${BASH_SOURCE[0]}")"
 SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_FILE"
 
-SCRIPT_VERSION="1.0.4"
+SCRIPT_VERSION="1.0.5"
 GITHUB_RAW_BASE="https://raw.githubusercontent.com/spupuz/duplicati-telegram-notifications/main"
 CONFIG_FILE="${SCRIPT_DIR}/telegram_config.env"
 
@@ -195,7 +195,7 @@ if [ "$DUPLICATI__EVENTNAME" == "AFTER" ]; then
     # ⚡ Bolt Optimization: Call parseResultFile once globally to avoid redundant disk I/O,
     # and use native bash parameter expansion to extract Duration without expensive grep/sed/tr subshells.
     parseResultFile
-    Duration="${Duration%%.*}"
+    Duration="${RES_Duration%%.*}"
     [ -z "$Duration" ] && Duration="--:--:--"
     MESSAGE=$(getResultLine)
     if [ "$DUPLICATI__OPERATIONNAME" == "Restore" ]; then
