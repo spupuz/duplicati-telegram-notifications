@@ -77,6 +77,7 @@ fi
 # Function to convert file sizes to human-readable format
 function getFriendlyFileSize() {
     local size="$1"
+    local __resultvar="$2"
     local val
     case "$size" in
         ''|*[!0-9]*)
@@ -85,21 +86,27 @@ function getFriendlyFileSize() {
     esac
     # ⚡ Bolt Optimization: Replaced awk subshells with native bash integer arithmetic to prevent fork/exec overhead.
     if [ "$size" -eq 0 ]; then
-        echo '-'
+        val='-'
     elif [ "$size" -ge 1099511627776 ]; then
         val=$(( (size * 100 / 1099511627776 + 5) / 10 ))
-        echo "$((val / 10)).$((val % 10))Tb"
+        val="$((val / 10)).$((val % 10))Tb"
     elif [ "$size" -ge 1073741824 ]; then
         val=$(( (size * 100 / 1073741824 + 5) / 10 ))
-        echo "$((val / 10)).$((val % 10))Gb"
+        val="$((val / 10)).$((val % 10))Gb"
     elif [ "$size" -ge 1048576 ]; then
         val=$(( (size * 100 / 1048576 + 5) / 10 ))
-        echo "$((val / 10)).$((val % 10))Mb"
+        val="$((val / 10)).$((val % 10))Mb"
     elif [ "$size" -ge 1024 ]; then
         val=$(( (size * 100 / 1024 + 5) / 10 ))
-        echo "$((val / 10)).$((val % 10))Kb"
+        val="$((val / 10)).$((val % 10))Kb"
     else
-        echo '-'
+        val='-'
+    fi
+
+    if [ -n "$__resultvar" ]; then
+        printf -v "$__resultvar" "%s" "$val"
+    else
+        echo "$val"
     fi
 }
 
@@ -135,6 +142,7 @@ function getResultLine () {
         *)       RESULT_ICON="$DUPLICATI__PARSED_RESULT" ;;
     esac
 
+    # ⚡ Bolt Optimization: Removed echo | sed pipeline since string doesn't have leading whitespace issues.
     local output="<b>💾 DUPLICATI BACKUP</b>
 <pre>
 ———————————————————————————————
@@ -145,46 +153,52 @@ ${RESULT_ICON} <b>Result:</b>    $DUPLICATI__PARSED_RESULT
 ———————————————————————————————
 ⏱ <b>Duration:</b>  $Duration
 ———————————————————————————————"
-    echo "$output" | sed 's/^[ \t]*//;s/[ \t]*$//'
+    echo "$output"
 }
 
 # Function to handle fatal errors
 function getResultFatal () {
+    # ⚡ Bolt Optimization: Removed echo | sed pipeline.
     local output="
 ❗ <b>Error:</b> $RES_Failed
 📋 <b>Details:</b> $RES_Details"
-    echo "$output" | sed 's/^[ \t]*//;s/[ \t]*$//'
+    echo "$output"
 }
 
 # Function to handle restore operations
 function getOperationRestore () {
-    local output="
-📂 <b>FILES:</b>         count       size
-📥 <b>Restored:</b>     $(printf %7s $RES_RestoredFiles) $(printf %10s $(getFriendlyFileSize $RES_SizeOfRestoredFiles))
-🗑️ <b>Deleted:</b>      $(printf %7s $RES_DeletedFiles) $(printf %10s $(getFriendlyFileSize 0))
-🛠️ <b>Patched:</b>      $(printf %7s $RES_PatchedFiles) $(printf %10s $(getFriendlyFileSize 0))
-———————————————————————————————
-📁 <b>FOLDERS:</b>
-📂 <b>Restored:</b>     $(printf %7s $RES_RestoredFolders) $(printf %10s $(getFriendlyFileSize 0))
-🗑️ <b>Deleted:</b>      $(printf %7s $RES_DeletedFolders) $(printf %10s $(getFriendlyFileSize 0))"
-    echo "$output" | sed 's/^[ \t]*//;s/[ \t]*$//'
+    # ⚡ Bolt Optimization: Removed $(printf) and $(getFriendlyFileSize) subshells, and removed echo | sed pipeline.
+    local s_restored s_deleted s_patched
+    getFriendlyFileSize "$RES_SizeOfRestoredFiles" s_restored
+    getFriendlyFileSize 0 s_deleted
+    getFriendlyFileSize 0 s_patched
+
+    local output
+    printf -v output "\n📂 <b>FILES:</b>         count       size\n📥 <b>Restored:</b>     %7s %10s\n🗑️ <b>Deleted:</b>      %7s %10s\n🛠️ <b>Patched:</b>      %7s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>\n📂 <b>Restored:</b>     %7s %10s\n🗑️ <b>Deleted:</b>      %7s %10s" \
+        "$RES_RestoredFiles" "$s_restored" "$RES_DeletedFiles" "$s_deleted" "$RES_PatchedFiles" "$s_patched" \
+        "$RES_RestoredFolders" "$s_deleted" "$RES_DeletedFolders" "$s_deleted"
+    echo "$output"
 }
 
 # Function to handle backup operations
 function getOperationBackup () {
-    local output="
-📂 <b>FILES:</b>         count       size
-➕ <b>Added:</b>        $(printf %7s $RES_AddedFiles) $(printf %10s $(getFriendlyFileSize $RES_SizeOfAddedFiles))
-➖ <b>Deleted:</b>      $(printf %7s $RES_DeletedFiles) $(printf %10s $(getFriendlyFileSize 0))
-🔧 <b>Changed:</b>      $(printf %7s $RES_ModifiedFiles) $(printf %10s $(getFriendlyFileSize $RES_SizeOfModifiedFiles))
-🔍 <b>Opened:</b>       $(printf %7s $RES_OpenedFiles) $(printf %10s $(getFriendlyFileSize $RES_SizeOfOpenedFiles))
-🔎 <b>Examined:</b>     $(printf %7s $RES_ExaminedFiles) $(printf %10s $(getFriendlyFileSize $RES_SizeOfExaminedFiles))
-———————————————————————————————
-📁 <b>FOLDERS:</b>
-➕ <b>Added:</b>        $(printf %7s $RES_AddedFolders) $(printf %10s $(getFriendlyFileSize 0))
-➖ <b>Deleted:</b>      $(printf %7s $RES_DeletedFolders) $(printf %10s $(getFriendlyFileSize 0))
-🔧 <b>Changed:</b>      $(printf %7s $RES_ModifiedFolders) $(printf %10s $(getFriendlyFileSize 0))"
-    echo "$output" | sed 's/^[ \t]*//;s/[ \t]*$//'
+    # ⚡ Bolt Optimization: Removed $(printf) and $(getFriendlyFileSize) subshells, and removed echo | sed pipeline.
+    local s_add s_del s_mod s_opn s_exm s_fadd s_fdel s_fmod
+    getFriendlyFileSize "$RES_SizeOfAddedFiles" s_add
+    getFriendlyFileSize 0 s_del
+    getFriendlyFileSize "$RES_SizeOfModifiedFiles" s_mod
+    getFriendlyFileSize "$RES_SizeOfOpenedFiles" s_opn
+    getFriendlyFileSize "$RES_SizeOfExaminedFiles" s_exm
+    getFriendlyFileSize 0 s_fadd
+    getFriendlyFileSize 0 s_fdel
+    getFriendlyFileSize 0 s_fmod
+
+    local output
+    printf -v output "\n📂 <b>FILES:</b>         count       size\n➕ <b>Added:</b>        %7s %10s\n➖ <b>Deleted:</b>      %7s %10s\n🔧 <b>Changed:</b>      %7s %10s\n🔍 <b>Opened:</b>       %7s %10s\n🔎 <b>Examined:</b>     %7s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>\n➕ <b>Added:</b>        %7s %10s\n➖ <b>Deleted:</b>      %7s %10s\n🔧 <b>Changed:</b>      %7s %10s" \
+        "$RES_AddedFiles" "$s_add" "$RES_DeletedFiles" "$s_del" "$RES_ModifiedFiles" "$s_mod" \
+        "$RES_OpenedFiles" "$s_opn" "$RES_ExaminedFiles" "$s_exm" "$RES_AddedFolders" "$s_fadd" \
+        "$RES_DeletedFolders" "$s_fdel" "$RES_ModifiedFolders" "$s_fmod"
+    echo "$output"
 }
 
 # Skip if operation is List
