@@ -1,0 +1,3 @@
+Duration: 00:00:05.123
+Failed: File <config.js> not found
+Details: Error & exception at line 1
