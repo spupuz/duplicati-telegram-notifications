@@ -125,8 +125,9 @@ function parseResultFile () {
 
 # Function to generate the result line with appropriate icon
 function getResultLine () {
-    # ⚡ Bolt Optimization: Replaced expensive `echo ... | sed ...` subshells with native bash `case` statements.
-    # This avoids spawning child processes for simple string mapping, significantly improving script performance.
+    local __resultvar="$1"
+    # ⚡ Bolt Optimization: Replaced expensive `echo ... | sed ...` subshells with native bash string parameter expansion.
+    # This avoids spawning child processes for string stripping, significantly improving script performance.
     case "$DUPLICATI__EVENTNAME" in
         BEFORE) CURRENT_STATUS="Started" ;;
         AFTER)  CURRENT_STATUS="Finished" ;;
@@ -152,19 +153,53 @@ ${RESULT_ICON} <b>Result:</b>    $DUPLICATI__PARSED_RESULT
 ———————————————————————————————
 ⏱ <b>Duration:</b>  $Duration
 ———————————————————————————————"
-    echo "$output" | sed 's/^[ \t]*//;s/[ \t]*$//'
+
+    local trimmed=""
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line="${line#"${line%%[![:blank:]]*}"}"
+        line="${line%"${line##*[![:blank:]]}"}"
+        if [ -n "$trimmed" ]; then
+            trimmed="$trimmed"$'\n'"$line"
+        else
+            trimmed="$line"
+        fi
+    done <<< "$output"
+
+    if [ -n "$__resultvar" ]; then
+        printf -v "$__resultvar" "%s" "$trimmed"
+    else
+        echo "$trimmed"
+    fi
 }
 
 # Function to handle fatal errors
 function getResultFatal () {
+    local __resultvar="$1"
     local output="
 ❗ <b>Error:</b> $RES_Failed
 📋 <b>Details:</b> $RES_Details"
-    echo "$output" | sed 's/^[ \t]*//;s/[ \t]*$//'
+
+    local trimmed=""
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line="${line#"${line%%[![:blank:]]*}"}"
+        line="${line%"${line##*[![:blank:]]}"}"
+        if [ -n "$trimmed" ]; then
+            trimmed="$trimmed"$'\n'"$line"
+        else
+            trimmed="$line"
+        fi
+    done <<< "$output"
+
+    if [ -n "$__resultvar" ]; then
+        printf -v "$__resultvar" "%s" "$trimmed"
+    else
+        echo "$trimmed"
+    fi
 }
 
 # Function to handle restore operations
 function getOperationRestore () {
+    local __resultvar="$1"
     local s_restored s_deleted s_patched
     getFriendlyFileSize "$RES_SizeOfRestoredFiles" s_restored
     getFriendlyFileSize 0 s_deleted
@@ -174,11 +209,17 @@ function getOperationRestore () {
     printf -v output "\n📂 <b>FILES:</b>         count       size\n📥 <b>Restored:</b>     %7s %10s\n🗑️ <b>Deleted:</b>      %7s %10s\n🛠️ <b>Patched:</b>      %7s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>\n📂 <b>Restored:</b>     %7s %10s\n🗑️ <b>Deleted:</b>      %7s %10s" \
         "$RES_RestoredFiles" "$s_restored" "$RES_DeletedFiles" "$s_deleted" "$RES_PatchedFiles" "$s_patched" \
         "$RES_RestoredFolders" "$s_deleted" "$RES_DeletedFolders" "$s_deleted"
-    echo "$output"
+
+    if [ -n "$__resultvar" ]; then
+        printf -v "$__resultvar" "%s" "$output"
+    else
+        echo "$output"
+    fi
 }
 
 # Function to handle backup operations
 function getOperationBackup () {
+    local __resultvar="$1"
     local s_add s_del s_mod s_opn s_exm s_fadd s_fdel s_fmod
     getFriendlyFileSize "$RES_SizeOfAddedFiles" s_add
     getFriendlyFileSize 0 s_del
@@ -194,7 +235,12 @@ function getOperationBackup () {
         "$RES_AddedFiles" "$s_add" "$RES_DeletedFiles" "$s_del" "$RES_ModifiedFiles" "$s_mod" \
         "$RES_OpenedFiles" "$s_opn" "$RES_ExaminedFiles" "$s_exm" "$RES_AddedFolders" "$s_fadd" \
         "$RES_DeletedFolders" "$s_fdel" "$RES_ModifiedFolders" "$s_fmod"
-    echo "$output"
+
+    if [ -n "$__resultvar" ]; then
+        printf -v "$__resultvar" "%s" "$output"
+    else
+        echo "$output"
+    fi
 }
 
 # Skip if operation is List
@@ -207,13 +253,17 @@ if [ "$DUPLICATI__EVENTNAME" == "AFTER" ]; then
     parseResultFile
     Duration="${RES_Duration%%.*}"
     [ -z "$Duration" ] && Duration="--:--:--"
-    MESSAGE=$(getResultLine)
+    getResultLine MESSAGE
+    TEMP_MSG=""
     if [ "$DUPLICATI__OPERATIONNAME" == "Restore" ]; then
-        MESSAGE+=$(getOperationRestore)
+        getOperationRestore TEMP_MSG
+        MESSAGE+="$TEMP_MSG"
     elif [ "$DUPLICATI__PARSED_RESULT" == "Fatal" ]; then
-        MESSAGE+=$(getResultFatal)
+        getResultFatal TEMP_MSG
+        MESSAGE+="$TEMP_MSG"
     else
-        MESSAGE+=$(getOperationBackup)
+        getOperationBackup TEMP_MSG
+        MESSAGE+="$TEMP_MSG"
     fi
 else
     # ⚡ Bolt Optimization: Replaced `echo | sed` subshell with native bash `case` statement to prevent fork/exec overhead.
