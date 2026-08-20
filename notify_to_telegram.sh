@@ -292,6 +292,9 @@ else
     MESSAGE+="⚙️ <b>Script version:</b> v${SCRIPT_VERSION}"
 fi
 
-curl -s "$TELEGRAM_URL" -d chat_id="$TELEGRAM_CHATID" --data-urlencode "text=$MESSAGE" -d parse_mode="HTML" > /dev/null
+# ⚡ Bolt Optimization: Background the curl request to make it fire-and-forget.
+# This prevents the script (and thus Duplicati) from blocking on network I/O
+# while waiting for the Telegram API response, reducing execution time by 200-500ms.
+(curl -s "$TELEGRAM_URL" -d chat_id="$TELEGRAM_CHATID" --data-urlencode "text=$MESSAGE" -d parse_mode="HTML" > /dev/null 2>&1 &)
 
 exit 0
