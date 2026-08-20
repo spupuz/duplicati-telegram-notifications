@@ -22,3 +22,8 @@
 **Vulnerability:** The script suffered from an information disclosure vulnerability due to unquoted variables within command substitutions (e.g., `$(printf %7s $RES_AddedFiles)`). If an attacker could inject shell globbing characters (like `*` or `?`) into the parsed log variables, the shell would expand them to match files in the current directory before passing them to `printf`. This would leak the contents of the directory (filenames) into the notification payload.
 **Learning:** Variables used inside command substitutions (`$(...)`) are still subject to word splitting and pathname expansion (globbing) by the shell if they are unquoted. This is a common pitfall that can lead to unexpected behavior and security issues.
 **Prevention:** Always quote variables, especially when passing them as arguments to commands or inside command substitutions. For example, use `$(printf "%7s" "$RES_AddedFiles")` instead of `$(printf %7s $RES_AddedFiles)`.
+
+## 2026-08-20 - [HTML Injection in Telegram Notifications]
+**Vulnerability:** User-controlled input (like backup name, error details) was sent unescaped to the Telegram API with `parse_mode="HTML"`.
+**Learning:** If user-controlled input contains unescaped HTML characters (`<`, `>`, `&`), it causes a 400 Bad Request error from the Telegram API, leading to silent notification failures (Denial of Service).
+**Prevention:** Always escape HTML characters (`&`, `<`, `>`) in variables that are embedded into Telegram HTML messages.
