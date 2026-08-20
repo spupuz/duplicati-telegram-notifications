@@ -74,6 +74,20 @@ if [ "${AUTO_UPDATE:-true}" = "true" ] && [ -z "$SKIP_UPDATE" ] && command -v cu
     auto_update "$@"
 fi
 
+# Function to escape HTML characters
+function escapeHTML() {
+    local val="$1"
+    local __resultvar="$2"
+    val="${val//&/"&amp;"}"
+    val="${val//</"&lt;"}"
+    val="${val//>/"&gt;"}"
+    if [ -n "$__resultvar" ]; then
+        printf -v "$__resultvar" "%s" "$val"
+    else
+        echo "$val"
+    fi
+}
+
 # Function to convert file sizes to human-readable format
 function getFriendlyFileSize() {
     local size="$1"
@@ -140,18 +154,25 @@ function getResultLine () {
         Warning) RESULT_ICON="⚠️" ;;
         Error)   RESULT_ICON="❌" ;;
         Fatal)   RESULT_ICON="💥" ;;
-        *)       RESULT_ICON="$DUPLICATI__PARSED_RESULT" ;;
+        *)       escapeHTML "$DUPLICATI__PARSED_RESULT" RESULT_ICON ;;
     esac
+
+    local safe_backup_name safe_op_name safe_status safe_result safe_duration
+    escapeHTML "$DUPLICATI__backup_name" safe_backup_name
+    escapeHTML "$DUPLICATI__OPERATIONNAME" safe_op_name
+    escapeHTML "$CURRENT_STATUS" safe_status
+    escapeHTML "$DUPLICATI__PARSED_RESULT" safe_result
+    escapeHTML "$Duration" safe_duration
 
     local output="<b>💾 DUPLICATI BACKUP</b>
 <pre>
 ———————————————————————————————
-📋 <b>Task:</b>      $DUPLICATI__backup_name
-⚙️ <b>Operation:</b> $DUPLICATI__OPERATIONNAME
-📊 <b>Status:</b>    $CURRENT_STATUS
-${RESULT_ICON} <b>Result:</b>    $DUPLICATI__PARSED_RESULT
+📋 <b>Task:</b>      $safe_backup_name
+⚙️ <b>Operation:</b> $safe_op_name
+📊 <b>Status:</b>    $safe_status
+${RESULT_ICON} <b>Result:</b>    $safe_result
 ———————————————————————————————
-⏱ <b>Duration:</b>  $Duration
+⏱ <b>Duration:</b>  $safe_duration
 ———————————————————————————————"
 
     local trimmed=""
@@ -175,9 +196,12 @@ ${RESULT_ICON} <b>Result:</b>    $DUPLICATI__PARSED_RESULT
 # Function to handle fatal errors
 function getResultFatal () {
     local __resultvar="$1"
+    local safe_failed safe_details
+    escapeHTML "$RES_Failed" safe_failed
+    escapeHTML "$RES_Details" safe_details
     local output="
-❗ <b>Error:</b> $RES_Failed
-📋 <b>Details:</b> $RES_Details"
+❗ <b>Error:</b> $safe_failed
+📋 <b>Details:</b> $safe_details"
 
     local trimmed=""
     while IFS= read -r line || [[ -n "$line" ]]; do
@@ -272,12 +296,18 @@ else
         AFTER)  CURRENT_STATUS="Finished" ;;
         *)      CURRENT_STATUS="$DUPLICATI__EVENTNAME" ;;
     esac
+
+    local safe_backup_name safe_op_name safe_status
+    escapeHTML "$DUPLICATI__backup_name" safe_backup_name
+    escapeHTML "$DUPLICATI__OPERATIONNAME" safe_op_name
+    escapeHTML "$CURRENT_STATUS" safe_status
+
     MESSAGE="<b>💾 DUPLICATI BACKUP</b>
 <pre>
 ———————————————————————————————
-📋 <b>Task:</b>      $DUPLICATI__backup_name
-⚙️ <b>Operation:</b> $DUPLICATI__OPERATIONNAME
-📊 <b>Status:</b>    $CURRENT_STATUS
+📋 <b>Task:</b>      $safe_backup_name
+⚙️ <b>Operation:</b> $safe_op_name
+📊 <b>Status:</b>    $safe_status
 </pre>"
 fi
 
