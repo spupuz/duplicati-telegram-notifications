@@ -74,6 +74,21 @@ if [ "${AUTO_UPDATE:-true}" = "true" ] && [ -z "$SKIP_UPDATE" ] && command -v cu
     auto_update "$@"
 fi
 
+# Security: Escape HTML special characters to prevent Telegram API 400 Bad Request (Silent DoS)
+function escape_html_var () {
+    local var_name="$1"
+    local val="${!var_name}"
+    val=${val//&/"&amp;"}
+    val=${val//</"&lt;"}
+    val=${val//>/"&gt;"}
+    printf -v "$var_name" "%s" "$val"
+}
+
+escape_html_var DUPLICATI__backup_name
+escape_html_var DUPLICATI__OPERATIONNAME
+escape_html_var DUPLICATI__EVENTNAME
+escape_html_var DUPLICATI__PARSED_RESULT
+
 # Function to convert file sizes to human-readable format
 function getFriendlyFileSize() {
     local size="$1"
@@ -117,6 +132,12 @@ function parseResultFile () {
         key="${key//[[:space:]]/}"
         val="${val#"${val%%[![:space:]]*}"}"
         val="${val%$'\r'}"
+
+        # Security: Escape HTML special characters
+        val=${val//&/"&amp;"}
+        val=${val//</"&lt;"}
+        val=${val//>/"&gt;"}
+
         if [[ "$key" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
             printf -v "RES_$key" "%s" "$val"
         fi
