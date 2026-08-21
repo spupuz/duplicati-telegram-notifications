@@ -292,6 +292,7 @@ else
     MESSAGE+="⚙️ <b>Script version:</b> v${SCRIPT_VERSION}"
 fi
 
-curl -s "$TELEGRAM_URL" -d chat_id="$TELEGRAM_CHATID" --data-urlencode "text=$MESSAGE" -d parse_mode="HTML" > /dev/null
+# ⚡ Bolt Optimization: Execute curl in a detached subshell to prevent blocking the parent process (Duplicati) on network I/O latency.
+(curl -s "$TELEGRAM_URL" -d chat_id="$TELEGRAM_CHATID" --data-urlencode "text=$MESSAGE" -d parse_mode="HTML" > /dev/null 2>&1 &)
 
 exit 0
