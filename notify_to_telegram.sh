@@ -118,6 +118,10 @@ function parseResultFile () {
         val="${val#"${val%%[![:space:]]*}"}"
         val="${val%$'\r'}"
         if [[ "$key" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+            # Escape HTML to prevent Telegram API errors (XSS/HTML injection)
+            val=${val//&/"&amp;"}
+            val=${val//</"&lt;"}
+            val=${val//>/"&gt;"}
             printf -v "RES_$key" "%s" "$val"
         fi
     done < "$DUPLICATI__RESULTFILE"
@@ -242,6 +246,21 @@ function getOperationBackup () {
         echo "$output"
     fi
 }
+
+# Function to safely HTML-escape user inputs (prevents HTML injection leading to API 400 errors)
+function escape_html_var() {
+    local var_name="$1"
+    local val="${!var_name}"
+    val=${val//&/"&amp;"}
+    val=${val//</"&lt;"}
+    val=${val//>/"&gt;"}
+    printf -v "$var_name" "%s" "$val"
+}
+
+escape_html_var DUPLICATI__backup_name
+escape_html_var DUPLICATI__OPERATIONNAME
+escape_html_var DUPLICATI__EVENTNAME
+escape_html_var DUPLICATI__PARSED_RESULT
 
 # Skip if operation is List
 if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
