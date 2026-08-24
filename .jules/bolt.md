@@ -17,3 +17,7 @@
 ## 2024-10-25 - Native Bash multiline string trimming
 **Learning:** Replaced `echo "$output" | sed 's/^[ \t]*//;s/[ \t]*$//'` subshells/pipelines with a pure bash implementation. While simple bash variable replacement isn't great for multiline strings, looping over `while IFS= read -r line; do ... done <<< "$string"` and applying `line="${line#"${line%%[![:blank:]]*}"}"` is almost 3x faster than invoking `sed` via a pipe, saving multiple subshells and fork/exec per call. Combining this with reference variables `printf -v` completely removes the massive subshell pipeline overhead.
 **Action:** When trimming multiline strings in performance-critical bash paths, favor native string extraction mechanisms inside loops over spawning text-processing binaries like `sed`.
+
+## 2026-08-24 - Non-blocking Network I/O
+**Learning:** Sending notifications over the network (e.g., Telegram API via curl) can block the parent process (Duplicati) until the network request completes or times out. For "fire-and-forget" notifications, this latency is unnecessary and delays the backup completion.
+**Action:** Always wrap fire-and-forget network calls in a detached subshell `(command >/dev/null 2>&1 &)` so the script can exit immediately without waiting for the network response.
