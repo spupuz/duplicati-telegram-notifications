@@ -17,3 +17,7 @@
 ## 2024-10-25 - Native Bash multiline string trimming
 **Learning:** Replaced `echo "$output" | sed 's/^[ \t]*//;s/[ \t]*$//'` subshells/pipelines with a pure bash implementation. While simple bash variable replacement isn't great for multiline strings, looping over `while IFS= read -r line; do ... done <<< "$string"` and applying `line="${line#"${line%%[![:blank:]]*}"}"` is almost 3x faster than invoking `sed` via a pipe, saving multiple subshells and fork/exec per call. Combining this with reference variables `printf -v` completely removes the massive subshell pipeline overhead.
 **Action:** When trimming multiline strings in performance-critical bash paths, favor native string extraction mechanisms inside loops over spawning text-processing binaries like `sed`.
+
+## 2026-08-25 - Asynchronous network requests
+**Learning:** When performing fire-and-forget network notifications (e.g., webhook scripts for Duplicati), running them synchronously blocks the parent process and delays the main application loop due to network I/O latency.
+**Action:** Execute such `curl` commands asynchronously in a detached subshell `(curl ... >/dev/null 2>&1 &)` to improve script completion time and overall application responsiveness.
