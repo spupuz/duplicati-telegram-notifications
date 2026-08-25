@@ -117,6 +117,12 @@ function parseResultFile () {
         key="${key//[[:space:]]/}"
         val="${val#"${val%%[![:space:]]*}"}"
         val="${val%$'\r'}"
+
+        # Escape HTML entities to prevent Telegram API 400 Bad Request
+        val="${val//&/&amp;}"
+        val="${val//</&lt;}"
+        val="${val//>/&gt;}"
+
         if [[ "$key" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
             printf -v "RES_$key" "%s" "$val"
         fi
@@ -242,6 +248,23 @@ function getOperationBackup () {
         echo "$output"
     fi
 }
+
+# Escape HTML entities in environment variables to prevent Telegram API 400 Bad Request
+DUPLICATI__backup_name="${DUPLICATI__backup_name//&/&amp;}"
+DUPLICATI__backup_name="${DUPLICATI__backup_name//</&lt;}"
+DUPLICATI__backup_name="${DUPLICATI__backup_name//>/&gt;}"
+
+DUPLICATI__OPERATIONNAME="${DUPLICATI__OPERATIONNAME//&/&amp;}"
+DUPLICATI__OPERATIONNAME="${DUPLICATI__OPERATIONNAME//</&lt;}"
+DUPLICATI__OPERATIONNAME="${DUPLICATI__OPERATIONNAME//>/&gt;}"
+
+DUPLICATI__PARSED_RESULT="${DUPLICATI__PARSED_RESULT//&/&amp;}"
+DUPLICATI__PARSED_RESULT="${DUPLICATI__PARSED_RESULT//</&lt;}"
+DUPLICATI__PARSED_RESULT="${DUPLICATI__PARSED_RESULT//>/&gt;}"
+
+DUPLICATI__EVENTNAME="${DUPLICATI__EVENTNAME//&/&amp;}"
+DUPLICATI__EVENTNAME="${DUPLICATI__EVENTNAME//</&lt;}"
+DUPLICATI__EVENTNAME="${DUPLICATI__EVENTNAME//>/&gt;}"
 
 # Skip if operation is List
 if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
