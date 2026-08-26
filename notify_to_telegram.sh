@@ -74,6 +74,19 @@ if [ "${AUTO_UPDATE:-true}" = "true" ] && [ -z "$SKIP_UPDATE" ] && command -v cu
     auto_update "$@"
 fi
 
+# Function to safely HTML escape variables to prevent Telegram API errors (DoS)
+function escape_html_var() {
+    # Disable patsub_replacement (Bash 5.2+) to ensure reliable escaping across versions
+    shopt -u patsub_replacement 2>/dev/null || true
+
+    local varname="$1"
+    local val="${!varname}"
+    val="${val//&/&amp;}"
+    val="${val//</&lt;}"
+    val="${val//>/&gt;}"
+    printf -v "$varname" "%s" "$val"
+}
+
 # Function to convert file sizes to human-readable format
 function getFriendlyFileSize() {
     local size="$1"
@@ -126,6 +139,12 @@ function parseResultFile () {
 # Function to generate the result line with appropriate icon
 function getResultLine () {
     local __resultvar="$1"
+
+    escape_html_var DUPLICATI__backup_name
+    escape_html_var DUPLICATI__OPERATIONNAME
+    escape_html_var DUPLICATI__EVENTNAME
+    escape_html_var DUPLICATI__PARSED_RESULT
+
     # ⚡ Bolt Optimization: Replaced expensive `echo ... | sed ...` subshells with native bash string parameter expansion.
     # This avoids spawning child processes for string stripping, significantly improving script performance.
     case "$DUPLICATI__EVENTNAME" in
@@ -175,6 +194,10 @@ ${RESULT_ICON} <b>Result:</b>    $DUPLICATI__PARSED_RESULT
 # Function to handle fatal errors
 function getResultFatal () {
     local __resultvar="$1"
+
+    escape_html_var RES_Failed
+    escape_html_var RES_Details
+
     local output="
 ❗ <b>Error:</b> $RES_Failed
 📋 <b>Details:</b> $RES_Details"
@@ -266,12 +289,17 @@ if [ "$DUPLICATI__EVENTNAME" == "AFTER" ]; then
         MESSAGE+="$TEMP_MSG"
     fi
 else
+    escape_html_var DUPLICATI__backup_name
+    escape_html_var DUPLICATI__OPERATIONNAME
+    escape_html_var DUPLICATI__EVENTNAME
+
     # ⚡ Bolt Optimization: Replaced `echo | sed` subshell with native bash `case` statement to prevent fork/exec overhead.
     case "$DUPLICATI__EVENTNAME" in
         BEFORE) CURRENT_STATUS="Started" ;;
         AFTER)  CURRENT_STATUS="Finished" ;;
         *)      CURRENT_STATUS="$DUPLICATI__EVENTNAME" ;;
     esac
+
     MESSAGE="<b>💾 DUPLICATI BACKUP</b>
 <pre>
 ———————————————————————————————
