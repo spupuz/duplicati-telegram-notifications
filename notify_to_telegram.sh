@@ -50,13 +50,22 @@ TELEGRAM_URL="https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage"
 # Auto-update: check GitHub for a newer version and replace itself
 auto_update() {
     local latest_version tmp_script
-    latest_version=$(curl -s --max-time 5 "$GITHUB_RAW_BASE/version.txt" 2>/dev/null | tr -d '\r\n')
+    # ⚡ Bolt Optimization: Removed `tr -d '\r\n'` subshell and replaced with native parameter expansion.
+    latest_version=$(curl -s --max-time 5 "$GITHUB_RAW_BASE/version.txt" 2>/dev/null)
+    latest_version="${latest_version//$'\r'/}"
+    latest_version="${latest_version//$'\n'/}"
     [ -z "$latest_version" ] && return
 
     if [ "$latest_version" != "$SCRIPT_VERSION" ] && [ "$(printf '%s\n' "$SCRIPT_VERSION" "$latest_version" | sort -V | tail -1)" = "$latest_version" ]; then
         tmp_script=$(mktemp)
         if curl -s --max-time 10 -o "$tmp_script" "$GITHUB_RAW_BASE/notify_to_telegram.sh" 2>/dev/null && [ -s "$tmp_script" ]; then
-            head -1 "$tmp_script" | grep -q "^#!/bin/bash" || { rm -f "$tmp_script"; return; }
+            # ⚡ Bolt Optimization: Replaced `head -1 | grep -q` pipeline with native bash file read and glob matching to avoid fork/exec overhead.
+            local first_line
+            IFS= read -r first_line < "$tmp_script"
+            if [[ "$first_line" != "#!/bin/bash"* ]]; then
+                rm -f "$tmp_script"
+                return
+            fi
             if ! diff -q "$tmp_script" "$SCRIPT_PATH" &>/dev/null; then
                 cp "$tmp_script" "$SCRIPT_PATH" && chmod +x "$SCRIPT_PATH"
                 rm -f "$tmp_script"

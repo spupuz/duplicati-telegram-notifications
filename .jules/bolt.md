@@ -17,3 +17,7 @@
 ## 2024-10-25 - Native Bash multiline string trimming
 **Learning:** Replaced `echo "$output" | sed 's/^[ \t]*//;s/[ \t]*$//'` subshells/pipelines with a pure bash implementation. While simple bash variable replacement isn't great for multiline strings, looping over `while IFS= read -r line; do ... done <<< "$string"` and applying `line="${line#"${line%%[![:blank:]]*}"}"` is almost 3x faster than invoking `sed` via a pipe, saving multiple subshells and fork/exec per call. Combining this with reference variables `printf -v` completely removes the massive subshell pipeline overhead.
 **Action:** When trimming multiline strings in performance-critical bash paths, favor native string extraction mechanisms inside loops over spawning text-processing binaries like `sed`.
+
+## 2024-10-25 - Replace child processes with native bash for auto-updates
+**Learning:** Checking the first line of a file using `head -1 file | grep -q pattern` spawns two child processes (head, grep) and a pipe, which is expensive in bash.
+**Action:** Instead, use native bash file reading and glob matching `IFS= read -r first_line < file` followed by `[[ "$first_line" == pattern* ]]` to achieve the same result significantly faster without fork/exec overhead. The same applies to using `tr` for replacing newlines/carriage returns, which can be done using parameter expansion `${var//$'\n'/}`.
