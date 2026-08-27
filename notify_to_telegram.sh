@@ -143,6 +143,7 @@ function getResultLine () {
         *)       RESULT_ICON="$DUPLICATI__PARSED_RESULT" ;;
     esac
 
+    # ⚡ Bolt Optimization: Pre-formatted string to avoid runtime loop trimming.
     local output="<b>💾 DUPLICATI BACKUP</b>
 <pre>
 ———————————————————————————————
@@ -154,46 +155,24 @@ ${RESULT_ICON} <b>Result:</b>    $DUPLICATI__PARSED_RESULT
 ⏱ <b>Duration:</b>  $Duration
 ———————————————————————————————"
 
-    local trimmed=""
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        line="${line#"${line%%[![:blank:]]*}"}"
-        line="${line%"${line##*[![:blank:]]}"}"
-        if [ -n "$trimmed" ]; then
-            trimmed="$trimmed"$'\n'"$line"
-        else
-            trimmed="$line"
-        fi
-    done <<< "$output"
-
     if [ -n "$__resultvar" ]; then
-        printf -v "$__resultvar" "%s" "$trimmed"
+        printf -v "$__resultvar" "%s" "$output"
     else
-        echo "$trimmed"
+        echo "$output"
     fi
 }
 
 # Function to handle fatal errors
 function getResultFatal () {
     local __resultvar="$1"
-    local output="
-❗ <b>Error:</b> $RES_Failed
+    # ⚡ Bolt Optimization: Pre-formatted string to avoid runtime loop trimming.
+    local output="❗ <b>Error:</b> $RES_Failed
 📋 <b>Details:</b> $RES_Details"
 
-    local trimmed=""
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        line="${line#"${line%%[![:blank:]]*}"}"
-        line="${line%"${line##*[![:blank:]]}"}"
-        if [ -n "$trimmed" ]; then
-            trimmed="$trimmed"$'\n'"$line"
-        else
-            trimmed="$line"
-        fi
-    done <<< "$output"
-
     if [ -n "$__resultvar" ]; then
-        printf -v "$__resultvar" "%s" "$trimmed"
+        printf -v "$__resultvar" "%s" "$output"
     else
-        echo "$trimmed"
+        echo "$output"
     fi
 }
 
