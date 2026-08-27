@@ -74,6 +74,18 @@ if [ "${AUTO_UPDATE:-true}" = "true" ] && [ -z "$SKIP_UPDATE" ] && command -v cu
     auto_update "$@"
 fi
 
+# Function to safely escape HTML characters to prevent Telegram API 400 Bad Request
+function escape_html_var() {
+    local var_name="$1"
+    local val="${!var_name}"
+    # Ensure cross-version consistency by disabling patsub_replacement if it exists (Bash 5.2+)
+    shopt -u patsub_replacement 2>/dev/null || true
+    val="${val//&/&amp;}"
+    val="${val//</&lt;}"
+    val="${val//>/&gt;}"
+    printf -v "$var_name" "%s" "$val"
+}
+
 # Function to convert file sizes to human-readable format
 function getFriendlyFileSize() {
     local size="$1"
@@ -143,6 +155,13 @@ function getResultLine () {
         *)       RESULT_ICON="$DUPLICATI__PARSED_RESULT" ;;
     esac
 
+    # Sanitize user-controlled inputs to prevent HTML tag injection
+    escape_html_var DUPLICATI__backup_name
+    escape_html_var DUPLICATI__OPERATIONNAME
+    escape_html_var CURRENT_STATUS
+    escape_html_var DUPLICATI__PARSED_RESULT
+    escape_html_var Duration
+
     local output="<b>💾 DUPLICATI BACKUP</b>
 <pre>
 ———————————————————————————————
@@ -175,6 +194,10 @@ ${RESULT_ICON} <b>Result:</b>    $DUPLICATI__PARSED_RESULT
 # Function to handle fatal errors
 function getResultFatal () {
     local __resultvar="$1"
+
+    escape_html_var RES_Failed
+    escape_html_var RES_Details
+
     local output="
 ❗ <b>Error:</b> $RES_Failed
 📋 <b>Details:</b> $RES_Details"
@@ -272,6 +295,11 @@ else
         AFTER)  CURRENT_STATUS="Finished" ;;
         *)      CURRENT_STATUS="$DUPLICATI__EVENTNAME" ;;
     esac
+
+    escape_html_var DUPLICATI__backup_name
+    escape_html_var DUPLICATI__OPERATIONNAME
+    escape_html_var CURRENT_STATUS
+
     MESSAGE="<b>💾 DUPLICATI BACKUP</b>
 <pre>
 ———————————————————————————————
