@@ -164,6 +164,7 @@ function getResultLine () {
     escapeHTML "$DUPLICATI__PARSED_RESULT" safe_result
     escapeHTML "$Duration" safe_duration
 
+    # ⚡ Bolt Optimization: Pre-formatted string to avoid runtime loop trimming.
     local output="<b>💾 DUPLICATI BACKUP</b>
 <pre>
 ———————————————————————————————
@@ -175,21 +176,10 @@ ${RESULT_ICON} <b>Result:</b>    $safe_result
 ⏱ <b>Duration:</b>  $safe_duration
 ———————————————————————————————"
 
-    local trimmed=""
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        line="${line#"${line%%[![:blank:]]*}"}"
-        line="${line%"${line##*[![:blank:]]}"}"
-        if [ -n "$trimmed" ]; then
-            trimmed="$trimmed"$'\n'"$line"
-        else
-            trimmed="$line"
-        fi
-    done <<< "$output"
-
     if [ -n "$__resultvar" ]; then
-        printf -v "$__resultvar" "%s" "$trimmed"
+        printf -v "$__resultvar" "%s" "$output"
     else
-        echo "$trimmed"
+        echo "$output"
     fi
 }
 
@@ -199,25 +189,14 @@ function getResultFatal () {
     local safe_failed safe_details
     escapeHTML "$RES_Failed" safe_failed
     escapeHTML "$RES_Details" safe_details
-    local output="
-❗ <b>Error:</b> $safe_failed
+    # ⚡ Bolt Optimization: Pre-formatted string to avoid runtime loop trimming.
+    local output="❗ <b>Error:</b> $safe_failed
 📋 <b>Details:</b> $safe_details"
 
-    local trimmed=""
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        line="${line#"${line%%[![:blank:]]*}"}"
-        line="${line%"${line##*[![:blank:]]}"}"
-        if [ -n "$trimmed" ]; then
-            trimmed="$trimmed"$'\n'"$line"
-        else
-            trimmed="$line"
-        fi
-    done <<< "$output"
-
     if [ -n "$__resultvar" ]; then
-        printf -v "$__resultvar" "%s" "$trimmed"
+        printf -v "$__resultvar" "%s" "$output"
     else
-        echo "$trimmed"
+        echo "$output"
     fi
 }
 
