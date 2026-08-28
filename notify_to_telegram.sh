@@ -85,11 +85,12 @@ fi
 
 # Function to escape HTML characters
 function escapeHTML() {
+    shopt -u patsub_replacement 2>/dev/null || true
     local val="$1"
     local __resultvar="$2"
-    val="${val//&/"&amp;"}"
-    val="${val//</"&lt;"}"
-    val="${val//>/"&gt;"}"
+    val="${val//&/&amp;}"
+    val="${val//</&lt;}"
+    val="${val//>/&gt;}"
     if [ -n "$__resultvar" ]; then
         printf -v "$__resultvar" "%s" "$val"
     else
