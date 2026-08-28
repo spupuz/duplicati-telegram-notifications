@@ -50,6 +50,19 @@ TELEGRAM_URL="https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage"
 # Auto-update: check GitHub for a newer version and replace itself
 auto_update() {
     local latest_version tmp_script
+
+    # ⚡ Bolt Optimization: Cache the auto-update check to once per day.
+    # This avoids a blocking synchronous `curl` request to GitHub on every single script execution,
+    # which delayed notifications significantly due to network I/O.
+    local cache_file="/tmp/duplicati_tg_update_check_${SCRIPT_VERSION}"
+    if [ -f "$cache_file" ]; then
+        # Use native bash file test to check if cache file is older than 1 day
+        if [ -z "$(find "$cache_file" -mtime +0 2>/dev/null)" ]; then
+            return 0
+        fi
+    fi
+    touch "$cache_file" 2>/dev/null
+
     # ⚡ Bolt Optimization: Removed `tr -d '\r\n'` subshell and replaced with native parameter expansion.
     latest_version=$(curl -s --max-time 5 "$GITHUB_RAW_BASE/version.txt" 2>/dev/null)
     latest_version="${latest_version//$'\r'/}"
