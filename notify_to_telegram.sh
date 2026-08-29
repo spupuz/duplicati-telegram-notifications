@@ -49,11 +49,21 @@ TELEGRAM_URL="https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage"
 
 # Auto-update: check GitHub for a newer version and replace itself
 auto_update() {
-    local latest_version tmp_script
+    local latest_version tmp_script cache_file
+    local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/duplicati-telegram"
+    mkdir -p "$cache_dir" 2>/dev/null || cache_dir="${TMPDIR:-/tmp}"
+    cache_file="$cache_dir/.duplicati_telegram_version_cache_$(id -u)"
+
     # ⚡ Bolt Optimization: Removed `tr -d '\r\n'` subshell and replaced with native parameter expansion.
-    latest_version=$(curl -s --max-time 5 "$GITHUB_RAW_BASE/version.txt" 2>/dev/null)
-    latest_version="${latest_version//$'\r'/}"
-    latest_version="${latest_version//$'\n'/}"
+    # ⚡ Bolt Optimization: Caching version check for 24 hours to eliminate blocking network request on every execution
+    if [ -f "$cache_file" ] && [ -n "$(find "$cache_file" -mmin -1440 2>/dev/null)" ]; then
+        IFS= read -r latest_version < "$cache_file"
+    else
+        latest_version=$(curl -s --max-time 5 "$GITHUB_RAW_BASE/version.txt" 2>/dev/null)
+        latest_version="${latest_version//$'\r'/}"
+        latest_version="${latest_version//$'\n'/}"
+        [ -n "$latest_version" ] && printf "%s\n" "$latest_version" > "$cache_file"
+    fi
     [ -z "$latest_version" ] && return
 
     if [ "$latest_version" != "$SCRIPT_VERSION" ] && [ "$(printf '%s\n' "$SCRIPT_VERSION" "$latest_version" | sort -V | tail -1)" = "$latest_version" ]; then
@@ -285,7 +295,7 @@ else
         *)      CURRENT_STATUS="$DUPLICATI__EVENTNAME" ;;
     esac
 
-    local safe_backup_name safe_op_name safe_status
+    safe_backup_name="" safe_op_name="" safe_status=""
     escapeHTML "$DUPLICATI__backup_name" safe_backup_name
     escapeHTML "$DUPLICATI__OPERATIONNAME" safe_op_name
     escapeHTML "$CURRENT_STATUS" safe_status
