@@ -57,7 +57,10 @@ auto_update() {
     [ -z "$latest_version" ] && return
 
     if [ "$latest_version" != "$SCRIPT_VERSION" ] && [ "$(printf '%s\n' "$SCRIPT_VERSION" "$latest_version" | sort -V | tail -1)" = "$latest_version" ]; then
-        tmp_script=$(mktemp)
+        local cache_dir="${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}"
+        mkdir -p "$cache_dir" 2>/dev/null || cache_dir="/tmp"
+        tmp_script=$(mktemp "$cache_dir/notify_to_telegram_$(id -u)_XXXXXX")
+
         if curl -s --max-time 10 -o "$tmp_script" "$GITHUB_RAW_BASE/notify_to_telegram.sh" 2>/dev/null && [ -s "$tmp_script" ]; then
             # ⚡ Bolt Optimization: Replaced `head -1 | grep -q` pipeline with native bash file read and glob matching to avoid fork/exec overhead.
             local first_line
@@ -87,9 +90,16 @@ fi
 function escapeHTML() {
     local val="$1"
     local __resultvar="$2"
-    val="${val//&/"&amp;"}"
-    val="${val//</"&lt;"}"
-    val="${val//>/"&gt;"}"
+
+    # Disable patsub_replacement for Bash 5.2+ to prevent '&' in replacement
+    # strings from being substituted with the matched pattern, which creates
+    # malformed HTML (e.g. '<lt;') causing Telegram API 400 Bad Request.
+    shopt -u patsub_replacement 2>/dev/null || true
+
+    val="${val//&/&amp;}"
+    val="${val//</&lt;}"
+    val="${val//>/&gt;}"
+
     if [ -n "$__resultvar" ]; then
         printf -v "$__resultvar" "%s" "$val"
     else
@@ -285,7 +295,9 @@ else
         *)      CURRENT_STATUS="$DUPLICATI__EVENTNAME" ;;
     esac
 
-    local safe_backup_name safe_op_name safe_status
+    safe_backup_name=""
+    safe_op_name=""
+    safe_status=""
     escapeHTML "$DUPLICATI__backup_name" safe_backup_name
     escapeHTML "$DUPLICATI__OPERATIONNAME" safe_op_name
     escapeHTML "$CURRENT_STATUS" safe_status
@@ -310,8 +322,10 @@ else
     MESSAGE+="⚙️ <b>Script version:</b> v${SCRIPT_VERSION}"
 fi
 
-# ⚡ Bolt Optimization: Execute curl asynchronously in a detached subshell
-# to prevent blocking the parent Duplicati process on network I/O latency.
-(curl -s "$TELEGRAM_URL" -d chat_id="$TELEGRAM_CHATID" --data-urlencode "text=$MESSAGE" -d parse_mode="HTML" > /dev/null 2>&1 &)
+# Execute curl synchronously
+# Note: Executing in a detached subshell `(curl ... &)` causes silent failure
+# in ephemeral environments (e.g. Docker containers) because the container
+# will terminate before the network request completes.
+curl -s "$TELEGRAM_URL" -d chat_id="$TELEGRAM_CHATID" --data-urlencode "text=$MESSAGE" -d parse_mode="HTML" > /dev/null 2>&1
 
 exit 0
