@@ -49,6 +49,25 @@ TELEGRAM_URL="https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage"
 
 # Auto-update: check GitHub for a newer version and replace itself
 auto_update() {
+    # ⚡ Bolt Optimization: Cache GitHub API check for 24 hours to eliminate synchronous network latency blocking Duplicati
+    local cache_dir="${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}"
+    local cache_file="${cache_dir}/duplicati_tg_update_check_$(id -u)"
+    local current_time
+    current_time=$(date +%s)
+
+    mkdir -p "$cache_dir" 2>/dev/null
+
+    if [ -f "$cache_file" ]; then
+        local last_check
+        last_check=$(cat "$cache_file" 2>/dev/null || echo 0)
+        # 86400 seconds = 24 hours
+        if [ "$((current_time - last_check))" -lt 86400 ]; then
+            return
+        fi
+    fi
+
+    echo "$current_time" > "$cache_file" 2>/dev/null || true
+
     local latest_version tmp_script
     # ⚡ Bolt Optimization: Removed `tr -d '\r\n'` subshell and replaced with native parameter expansion.
     latest_version=$(curl -s --max-time 5 "$GITHUB_RAW_BASE/version.txt" 2>/dev/null)
@@ -285,7 +304,9 @@ else
         *)      CURRENT_STATUS="$DUPLICATI__EVENTNAME" ;;
     esac
 
-    local safe_backup_name safe_op_name safe_status
+    safe_backup_name=""
+    safe_op_name=""
+    safe_status=""
     escapeHTML "$DUPLICATI__backup_name" safe_backup_name
     escapeHTML "$DUPLICATI__OPERATIONNAME" safe_op_name
     escapeHTML "$CURRENT_STATUS" safe_status
@@ -310,8 +331,6 @@ else
     MESSAGE+="⚙️ <b>Script version:</b> v${SCRIPT_VERSION}"
 fi
 
-# ⚡ Bolt Optimization: Execute curl asynchronously in a detached subshell
-# to prevent blocking the parent Duplicati process on network I/O latency.
-(curl -s "$TELEGRAM_URL" -d chat_id="$TELEGRAM_CHATID" --data-urlencode "text=$MESSAGE" -d parse_mode="HTML" > /dev/null 2>&1 &)
+curl -s "$TELEGRAM_URL" -d chat_id="$TELEGRAM_CHATID" --data-urlencode "text=$MESSAGE" -d parse_mode="HTML" > /dev/null 2>&1
 
 exit 0

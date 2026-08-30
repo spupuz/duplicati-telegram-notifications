@@ -1,0 +1,4 @@
+
+## 2026-08-30 - Reverting Detached Subshells and Implementing Network Request Caching
+**Learning:** Attempting to optimize bash network requests using a detached asynchronous subshell `(curl ... &)` is an anti-pattern in ephemeral environments (like Docker containers and CI runners). The script exits before the network request completes, dropping the notification silently. Micro-optimizing bash execution time (<5ms) is less impactful than addressing actual blocking operations like network latency (1-5s).
+**Action:** Reverted the detached subshell to a synchronous `curl` call for reliability. To mitigate the actual performance bottleneck (synchronous update checks blocking Duplicati backups), implemented a 24-hour cache leveraging `$XDG_CACHE_HOME` (or `/tmp/.cache`) using Unix timestamps to skip redundant GitHub API calls.
