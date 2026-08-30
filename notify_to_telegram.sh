@@ -87,9 +87,10 @@ fi
 function escapeHTML() {
     local val="$1"
     local __resultvar="$2"
-    val="${val//&/"&amp;"}"
-    val="${val//</"&lt;"}"
-    val="${val//>/"&gt;"}"
+    shopt -u patsub_replacement 2>/dev/null || true
+    val="${val//&/&amp;}"
+    val="${val//</&lt;}"
+    val="${val//>/&gt;}"
     if [ -n "$__resultvar" ]; then
         printf -v "$__resultvar" "%s" "$val"
     else
@@ -285,7 +286,6 @@ else
         *)      CURRENT_STATUS="$DUPLICATI__EVENTNAME" ;;
     esac
 
-    local safe_backup_name safe_op_name safe_status
     escapeHTML "$DUPLICATI__backup_name" safe_backup_name
     escapeHTML "$DUPLICATI__OPERATIONNAME" safe_op_name
     escapeHTML "$CURRENT_STATUS" safe_status
@@ -310,8 +310,8 @@ else
     MESSAGE+="⚙️ <b>Script version:</b> v${SCRIPT_VERSION}"
 fi
 
-# ⚡ Bolt Optimization: Execute curl asynchronously in a detached subshell
-# to prevent blocking the parent Duplicati process on network I/O latency.
-(curl -s "$TELEGRAM_URL" -d chat_id="$TELEGRAM_CHATID" --data-urlencode "text=$MESSAGE" -d parse_mode="HTML" > /dev/null 2>&1 &)
+# ⚡ Bolt Optimization: Removed detached subshell execution. Running asynchronously
+# drops the notification in short-lived environments before the request completes.
+curl -s "$TELEGRAM_URL" -d chat_id="$TELEGRAM_CHATID" --data-urlencode "text=$MESSAGE" -d parse_mode="HTML" > /dev/null 2>&1
 
 exit 0
