@@ -1,4 +1,8 @@
 
+## 2026-08-30 - Reverting Detached Subshells and Implementing Network Request Caching
+**Learning:** Attempting to optimize bash network requests using a detached asynchronous subshell `(curl ... &)` is an anti-pattern in ephemeral environments (like Docker containers and CI runners). The script exits before the network request completes, dropping the notification silently. Micro-optimizing bash execution time (<5ms) is less impactful than addressing actual blocking operations like network latency (1-5s).
+**Action:** Reverted the detached subshell to a synchronous `curl` call for reliability. To mitigate the actual performance bottleneck (synchronous update checks blocking Duplicati backups), implemented a 24-hour cache leveraging `$XDG_CACHE_HOME` (or `/tmp/.cache`) using Unix timestamps to skip redundant GitHub API calls.
+
 ## 2026-08-29 - [Synchronous Network Requests Block Micro-Optimizations]
 **Learning:** Checking for updates synchronously over the network (`curl -s ...`) on every execution of a bash script introduces significant, blocking overhead (100ms - 5000ms). This entirely negates the 1-5ms savings from avoiding fork/exec subshells (like replacing `tr` or `awk` with native bash).
 **Action:** Always cache the results of non-critical external network requests in temporary files (e.g., checking `find ... -mmin -1440` for 24-hour validity) to eliminate network latency on subsequent runs and preserve micro-optimization benefits.
