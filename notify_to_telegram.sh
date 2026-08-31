@@ -28,8 +28,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_FILE="$(basename "${BASH_SOURCE[0]}")"
 SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_FILE"
 
-SCRIPT_VERSION="1.0.8"
-GITHUB_RAW_BASE="https://raw.githubusercontent.com/spupuz/duplicati-telegram-notifications/main"
+SCRIPT_VERSION="1.2.0"
+GITHUB_OWNER="spupuz"
+GITHUB_REPO="duplicati-telegram-notifications"
+GITHUB_RAW_BASE="https://raw.githubusercontent.com/$GITHUB_OWNER/$GITHUB_REPO/main"
+GITHUB_API_LATEST="https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
 CONFIG_FILE="${SCRIPT_DIR}/telegram_config.env"
 
 # 2. Load variables from config file if it exists, cleaning Windows CRLF line endings (\r)
@@ -49,31 +52,56 @@ TELEGRAM_URL="https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage"
 
 # Auto-update: check GitHub for a newer version and replace itself
 auto_update() {
-    local latest_version tmp_script cache_file
+    local latest_version tmp_script cache_file first_line latest_tag dl_url DOWNLOAD_REF
     local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/duplicati-telegram"
     mkdir -p "$cache_dir" 2>/dev/null || cache_dir="${TMPDIR:-/tmp}"
     cache_file="$cache_dir/.duplicati_telegram_version_cache_$(id -u)"
 
-    # ⚡ Bolt Optimization: Removed `tr -d '\r\n'` subshell and replaced with native parameter expansion.
-    # ⚡ Bolt Optimization: Caching version check for 24 hours to eliminate blocking network request on every execution
+    # Determine the latest release. Hybrid strategy:
+    # 1) Prefer the official GitHub "latest release" (tag vX.Y.Z) via the API.
+    # 2) Fall back to version.txt on the main branch if the API fails (e.g.
+    #    unauthenticated rate limit, network, or no release published yet).
+    # The result is cached for 24 hours to avoid a blocking request on every run.
     if [ -f "$cache_file" ] && [ -n "$(find "$cache_file" -mmin -1440 2>/dev/null)" ]; then
         IFS= read -r latest_version < "$cache_file"
     else
-        latest_version=$(curl -s --compressed --max-time 5 "$GITHUB_RAW_BASE/version.txt" 2>/dev/null)
-        latest_version="${latest_version//$'\r'/}"
-        latest_version="${latest_version//$'\n'/}"
+        latest_tag=$(curl -s --compressed --max-time 5 \
+            -H "Accept: application/vnd.github+json" \
+            "$GITHUB_API_LATEST" 2>/dev/null \
+            | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
+        latest_tag="${latest_tag//$'\r'/}"
+        latest_tag="${latest_tag//$'\n'/}"
+        if [ -n "$latest_tag" ]; then
+            # vX.Y.Z -> X.Y.Z, so it can be compared with SCRIPT_VERSION and cached
+            latest_version="${latest_tag#v}"
+            # Remember which source we used so the download matches (must not be cached wrongly)
+            DOWNLOAD_REF="$latest_tag"
+        else
+            latest_version=$(curl -s --compressed --max-time 5 "$GITHUB_RAW_BASE/version.txt" 2>/dev/null)
+            latest_version="${latest_version//$'\r'/}"
+            latest_version="${latest_version//$'\n'/}"
+            [ -n "$latest_version" ] && DOWNLOAD_REF="main"
+        fi
         [ -n "$latest_version" ] && printf "%s\n" "$latest_version" > "$cache_file"
     fi
     [ -z "$latest_version" ] && return
+    # When reading from cache, DOWNLOAD_REF is unset: reconstruct it from the cached version.
+    : "${DOWNLOAD_REF:=v${latest_version}}"
 
     if [ "$latest_version" != "$SCRIPT_VERSION" ] && [ "$(printf '%s\n' "$SCRIPT_VERSION" "$latest_version" | sort -V | tail -1)" = "$latest_version" ]; then
         local cache_dir="${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}"
         mkdir -p "$cache_dir" 2>/dev/null || cache_dir="/tmp"
         tmp_script=$(mktemp "$cache_dir/notify_to_telegram_$(id -u)_XXXXXX")
 
-        if curl -s --compressed --max-time 10 -o "$tmp_script" "$GITHUB_RAW_BASE/notify_to_telegram.sh" 2>/dev/null && [ -s "$tmp_script" ]; then
-            # ⚡ Bolt Optimization: Replaced `head -1 | grep -q` pipeline with native bash file read and glob matching to avoid fork/exec overhead.
-            local first_line
+        # Download the script from the same source that reported the latest version:
+        # a release tag -> that tag on raw.githubusercontent.com; fallback -> main branch.
+        if [ "$DOWNLOAD_REF" != "main" ]; then
+            dl_url="https://raw.githubusercontent.com/$GITHUB_OWNER/$GITHUB_REPO/$DOWNLOAD_REF/notify_to_telegram.sh"
+        else
+            dl_url="$GITHUB_RAW_BASE/notify_to_telegram.sh"
+        fi
+
+        if curl -s --compressed --max-time 10 -o "$tmp_script" "$dl_url" 2>/dev/null && [ -s "$tmp_script" ]; then
             IFS= read -r first_line < "$tmp_script"
             if [[ "$first_line" != "#!/bin/bash"* ]]; then
                 rm -f "$tmp_script"

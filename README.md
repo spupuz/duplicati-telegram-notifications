@@ -56,7 +56,13 @@ Configure the script to run before or after your backup operations directly via 
 
 ## 🔄 Auto-Update
 
-The script automatically checks for new versions on GitHub at each run. If a newer version is found, it downloads and replaces itself transparently before executing. When the script updates itself, the notification reports the version transition (e.g. `🔄 Script updated: v1.0.1 → v1.0.2`); otherwise it shows the current version (e.g. `⚙️ Script version: v1.0.2`).
+The script automatically checks GitHub for the latest **release** (tagged `vX.Y.Z`) at each run. If a newer version is found, it downloads and replaces itself transparently before executing. When the script updates itself, the notification reports the version transition (e.g. `🔄 Script updated: v1.0.1 → v1.0.2`); otherwise it shows the current version (e.g. `⚙️ Script version: v1.0.2`).
+
+The version check is a **hybrid strategy**:
+1. It first queries the official GitHub **latest release** via the API (`releases/latest`) and downloads the script from that release tag.
+2. If the API is unavailable (rate limit, network error, or no release published yet), it falls back to reading `version.txt` on the `main` branch.
+
+The check result is cached for 24 hours to avoid a blocking network request on every run.
 
 ### Enable / disable auto-update
 
@@ -77,6 +83,14 @@ Or export it in your environment / `telegram_config.env`:
 ```env
 SKIP_UPDATE=1
 ```
+
+---
+
+## 📦 Changelog
+
+### v1.2.0
+- **Auto-update now checks GitHub releases**: the script prefers the official latest GitHub release (tagged `vX.Y.Z`) via the API, falling back to `version.txt` on the `main` branch if the API is unavailable. The script is downloaded from the corresponding release tag.
+- Fixed a version-sync bug where `SCRIPT_VERSION` in the script was left stale, silently breaking self-update (the downloaded file was identical so it was never replaced).
 
 ---
 
