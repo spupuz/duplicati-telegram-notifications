@@ -59,7 +59,7 @@ auto_update() {
     if [ -f "$cache_file" ] && [ -n "$(find "$cache_file" -mmin -1440 2>/dev/null)" ]; then
         IFS= read -r latest_version < "$cache_file"
     else
-        latest_version=$(curl -s --max-time 5 "$GITHUB_RAW_BASE/version.txt" 2>/dev/null)
+        latest_version=$(curl -s --compressed --max-time 5 "$GITHUB_RAW_BASE/version.txt" 2>/dev/null)
         latest_version="${latest_version//$'\r'/}"
         latest_version="${latest_version//$'\n'/}"
         [ -n "$latest_version" ] && printf "%s\n" "$latest_version" > "$cache_file"
@@ -71,7 +71,7 @@ auto_update() {
         mkdir -p "$cache_dir" 2>/dev/null || cache_dir="/tmp"
         tmp_script=$(mktemp "$cache_dir/notify_to_telegram_$(id -u)_XXXXXX")
 
-        if curl -s --max-time 10 -o "$tmp_script" "$GITHUB_RAW_BASE/notify_to_telegram.sh" 2>/dev/null && [ -s "$tmp_script" ]; then
+        if curl -s --compressed --max-time 10 -o "$tmp_script" "$GITHUB_RAW_BASE/notify_to_telegram.sh" 2>/dev/null && [ -s "$tmp_script" ]; then
             # ⚡ Bolt Optimization: Replaced `head -1 | grep -q` pipeline with native bash file read and glob matching to avoid fork/exec overhead.
             local first_line
             IFS= read -r first_line < "$tmp_script"

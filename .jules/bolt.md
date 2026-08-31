@@ -1,0 +1,3 @@
+## 2026-08-31 - [Synchronous Network Latency]
+**Learning:** The script has an `auto_update` check that happens *synchronously* on every run unless specifically disabled or recently cached. The cache is 24 hours, meaning once a day, the script performs a blocking network request (`curl` to GitHub) taking ~100-200ms before doing anything else. Furthermore, since this script uses `bash -c`, it blocks the Duplicati backup process (either BEFORE or AFTER). And in `curl`, compressed transfer (gzip) with `--compressed` can save download bytes on GitHub raw content (13.8KB -> 4KB for script).
+**Action:** Adding `--compressed` to the curl downloads will save bandwidth/time.
