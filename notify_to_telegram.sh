@@ -32,7 +32,7 @@ SCRIPT_VERSION="1.2.0"
 GITHUB_OWNER="spupuz"
 GITHUB_REPO="duplicati-telegram-notifications"
 GITHUB_RAW_BASE="https://raw.githubusercontent.com/$GITHUB_OWNER/$GITHUB_REPO/main"
-GITHUB_API_LATEST="https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
+GITHUB_RELEASE_LATEST="https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
 CONFIG_FILE="${SCRIPT_DIR}/telegram_config.env"
 
 # 2. Load variables securely from config file if it exists, preventing command injection
@@ -85,12 +85,15 @@ auto_update() {
     if [ -f "$cache_file" ] && [ -n "$(find "$cache_file" -mmin -1440 2>/dev/null)" ]; then
         IFS= read -r latest_version < "$cache_file"
     else
-        latest_tag=$(curl -s --compressed --max-time 5 \
-            -H "Accept: application/vnd.github+json" \
-            "$GITHUB_API_LATEST" 2>/dev/null \
-            | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -1)
-        latest_tag="${latest_tag//$'\r'/}"
-        latest_tag="${latest_tag//$'\n'/}"
+        # ⚡ Bolt Optimization: Use HTTP HEAD request to the GitHub web release redirect instead of fetching
+        # the entire JSON API payload. Then, parse the Location header using native Bash regex.
+        # This saves bandwidth and eliminates fork/exec overhead from external binaries like sed/head.
+        local headers
+        headers=$(curl -sI --max-time 5 "$GITHUB_RELEASE_LATEST" 2>/dev/null)
+        if [[ "$headers" =~ [Ll]ocation:[[:space:]]*.*/tag/([^[:space:]$'\r\n']+) ]]; then
+            latest_tag="${BASH_REMATCH[1]}"
+        fi
+
         if [ -n "$latest_tag" ]; then
             # vX.Y.Z -> X.Y.Z, so it can be compared with SCRIPT_VERSION and cached
             latest_version="${latest_tag#v}"
