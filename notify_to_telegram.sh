@@ -35,9 +35,29 @@ GITHUB_RAW_BASE="https://raw.githubusercontent.com/$GITHUB_OWNER/$GITHUB_REPO/ma
 GITHUB_API_LATEST="https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
 CONFIG_FILE="${SCRIPT_DIR}/telegram_config.env"
 
-# 2. Load variables from config file if it exists, cleaning Windows CRLF line endings (\r)
+# 2. Load variables securely from config file if it exists, preventing command injection
 if [ -f "$CONFIG_FILE" ]; then
-    source <(tr -d '\r' < "$CONFIG_FILE")
+    while IFS='=' read -r key val || [ -n "$key" ]; do
+        # Trim whitespace from key
+        key="${key#"${key%%[![:space:]]*}"}"
+        key="${key%"${key##*[![:space:]]}"}"
+        # Skip empty lines and comments
+        if [[ -z "$key" || "$key" == "#"* ]]; then continue; fi
+
+        # Trim whitespace, carriage returns, and quotes from value
+        val="${val#"${val%%[![:space:]]*}"}"
+        val="${val%$'\r'}"
+        val="${val#\"}"
+        val="${val%\"}"
+        val="${val#\'}"
+        val="${val%\'}"
+
+        # Only allow specific configuration variables to prevent environment injection (e.g. overwriting PATH)
+        if [[ "$key" == "TELEGRAM_TOKEN" || "$key" == "TELEGRAM_CHATID" || "$key" == "AUTO_UPDATE" || "$key" == "SKIP_UPDATE" ]]; then
+            printf -v "$key" "%s" "$val"
+            export "$key"
+        fi
+    done < "$CONFIG_FILE"
 fi
 
 # 3. Verify presence of required variables (loaded from config or inherited from env)
