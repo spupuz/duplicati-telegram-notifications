@@ -1,3 +1,0 @@
-## 2024-05-24 - Optimize GitHub Release Check with HEAD Requests
-**Learning:** Fetching the latest release via GitHub's API (`api.github.com/.../releases/latest`) requires downloading and parsing a JSON payload, which is inefficient.
-**Action:** Instead, send an HTTP HEAD request (`curl -sI`) to the repository's web interface redirect URL (`https://github.com/OWNER/REPO/releases/latest`). GitHub will respond with a `302 Found` and a `Location:` header pointing to the release tag. This header can be parsed instantly using native Bash regex (`[[ "$headers" =~ ... ]]`), saving bandwidth and completely eliminating the fork/exec overhead of spawning binaries like `sed` and `head`.

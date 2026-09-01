@@ -1,5 +1,0 @@
-
-## 2026-09-01 - Prevent Command & Environment Injection in Config Parsing
-**Vulnerability:** The script previously loaded its configuration file (`telegram_config.env`) using `source <(tr -d '\r' < "$CONFIG_FILE")`. This arbitrary execution allowed Command Injection if the configuration file contained malicious commands. Additionally, it permitted Environment Variable Injection, allowing a malicious configuration to overwrite critical shell variables (e.g. `PATH`), which could subvert execution flow.
-**Learning:** Using `source` on untrusted or external configuration files in Bash is dangerous and a well-known anti-pattern. While it natively handles variable assignments, it also executes any bash code present.
-**Prevention:** Always parse configuration files safely without execution. For bash scripts reading `.env`-like files, use a secure `while IFS='=' read -r key val; do ... done` loop. To prevent Environment Variable Injection, strictly allow-list the variable keys (e.g. `TELEGRAM_TOKEN`, `TELEGRAM_CHATID`, `AUTO_UPDATE`) before exporting them to the environment.
