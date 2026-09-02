@@ -105,7 +105,12 @@ auto_update() {
             latest_version="${latest_version//$'\n'/}"
             [ -n "$latest_version" ] && DOWNLOAD_REF="main"
         fi
-        [ -n "$latest_version" ] && printf "%s\n" "$latest_version" > "$cache_file"
+        if [ -n "$latest_version" ]; then
+            local tmp_cache
+            tmp_cache=$(mktemp "${cache_dir}/.version_cache_tmp_XXXXXX")
+            printf "%s\n" "$latest_version" > "$tmp_cache"
+            mv -f "$tmp_cache" "$cache_file"
+        fi
     fi
     [ -z "$latest_version" ] && return
     # When reading from cache, DOWNLOAD_REF is unset: reconstruct it from the cached version.
