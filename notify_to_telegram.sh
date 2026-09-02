@@ -23,6 +23,9 @@
 # any claim, damages, data loss or other liability arising from its use.
 #########################################################################
 
+# Skip immediately if operation is List to avoid unnecessary loading and network requests
+if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
+
 # 1. Locate the script directory to load the relative configuration file
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_FILE="$(basename "${BASH_SOURCE[0]}")"
@@ -319,9 +322,6 @@ function getOperationBackup () {
         echo "$output"
     fi
 }
-
-# Skip if operation is List
-if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
 
 # Generate message content
 if [ "$DUPLICATI__EVENTNAME" == "AFTER" ]; then
