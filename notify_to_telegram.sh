@@ -26,6 +26,12 @@
 # Skip immediately if operation is List to avoid unnecessary loading and network requests
 if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
 
+# ⚡ Bolt Optimization: Early exit if curl is missing to avoid environment loading, parsing, and execution overhead
+if ! command -v curl >/dev/null 2>&1; then
+    echo "Error: curl is required but not installed." >&2
+    exit 0
+fi
+
 # 1. Locate the script directory to load the relative configuration file
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_FILE="$(basename "${BASH_SOURCE[0]}")"
@@ -151,7 +157,8 @@ auto_update() {
 
 # Run auto-update synchronously (short timeouts: ~5s max if no update, ~15s for full update)
 # Enabled by default; disable with AUTO_UPDATE="false" in telegram_config.env (or legacy SKIP_UPDATE=1 env var)
-if [ "${AUTO_UPDATE:-true}" = "true" ] && [ -z "$SKIP_UPDATE" ] && command -v curl &>/dev/null; then
+# ⚡ Bolt Optimization: Defer auto_update during BEFORE events to avoid blocking network latency from delaying the backup
+if [ "${AUTO_UPDATE:-true}" = "true" ] && [ -z "$SKIP_UPDATE" ] && [ "$DUPLICATI__EVENTNAME" != "BEFORE" ] && command -v curl &>/dev/null; then
     auto_update "$@"
 fi
 
