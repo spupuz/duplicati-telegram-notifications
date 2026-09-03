@@ -384,6 +384,6 @@ fi
 
 # ⚡ Bolt Optimization: Removed detached subshell execution. Running asynchronously
 # drops the notification in short-lived environments before the request completes.
-curl -s "$TELEGRAM_URL" --data-urlencode "chat_id=$TELEGRAM_CHATID" --data-urlencode "text=$MESSAGE" --data-urlencode "parse_mode=HTML" > /dev/null 2>&1
+curl -s --connect-timeout 10 --max-time 30 --proto '=https' "$TELEGRAM_URL" --data-urlencode "chat_id=$TELEGRAM_CHATID" --data-urlencode "text=$MESSAGE" --data-urlencode "parse_mode=HTML" > /dev/null 2>&1
 
 exit 0
