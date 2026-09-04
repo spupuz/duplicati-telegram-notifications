@@ -98,7 +98,7 @@ auto_update() {
         # the entire JSON API payload. Then, parse the Location header using native Bash regex.
         # This saves bandwidth and eliminates fork/exec overhead from external binaries like sed/head.
         local headers
-        headers=$(curl -sI --max-time 5 "$GITHUB_RELEASE_LATEST" 2>/dev/null)
+        headers=$(curl -sI --connect-timeout 5 --max-time 5 --proto '=https' "$GITHUB_RELEASE_LATEST" 2>/dev/null)
         if [[ "$headers" =~ [Ll]ocation:[[:space:]]*.*/tag/([^[:space:]$'\r\n']+) ]]; then
             latest_tag="${BASH_REMATCH[1]}"
         fi
@@ -109,7 +109,7 @@ auto_update() {
             # Remember which source we used so the download matches (must not be cached wrongly)
             DOWNLOAD_REF="$latest_tag"
         else
-            latest_version=$(curl -s --compressed --max-time 5 "$GITHUB_RAW_BASE/version.txt" 2>/dev/null)
+            latest_version=$(curl -s --compressed --connect-timeout 5 --max-time 5 --proto '=https' "$GITHUB_RAW_BASE/version.txt" 2>/dev/null)
             latest_version="${latest_version//$'\r'/}"
             latest_version="${latest_version//$'\n'/}"
             [ -n "$latest_version" ] && DOWNLOAD_REF="main"
@@ -138,7 +138,7 @@ auto_update() {
             dl_url="$GITHUB_RAW_BASE/notify_to_telegram.sh"
         fi
 
-        if curl -s --compressed --max-time 10 -o "$tmp_script" "$dl_url" 2>/dev/null && [ -s "$tmp_script" ]; then
+        if curl -s --compressed --connect-timeout 5 --max-time 10 --proto '=https' -o "$tmp_script" "$dl_url" 2>/dev/null && [ -s "$tmp_script" ]; then
             IFS= read -r first_line < "$tmp_script"
             if [[ "$first_line" != "#!/bin/bash"* ]]; then
                 rm -f "$tmp_script"
