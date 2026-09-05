@@ -297,10 +297,17 @@ function getOperationRestore () {
     getFriendlyFileSize 0 s_deleted
     getFriendlyFileSize 0 s_patched
 
+    local safe_restored_files safe_deleted_files safe_patched_files safe_restored_folders safe_deleted_folders
+    escapeHTML "$RES_RestoredFiles" safe_restored_files
+    escapeHTML "$RES_DeletedFiles" safe_deleted_files
+    escapeHTML "$RES_PatchedFiles" safe_patched_files
+    escapeHTML "$RES_RestoredFolders" safe_restored_folders
+    escapeHTML "$RES_DeletedFolders" safe_deleted_folders
+
     local output
     printf -v output "\n📂 <b>FILES:</b>         count       size\n📥 <b>Restored:</b>     %7s %10s\n🗑️ <b>Deleted:</b>      %7s %10s\n🛠️ <b>Patched:</b>      %7s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>\n📂 <b>Restored:</b>     %7s %10s\n🗑️ <b>Deleted:</b>      %7s %10s" \
-        "$RES_RestoredFiles" "$s_restored" "$RES_DeletedFiles" "$s_deleted" "$RES_PatchedFiles" "$s_patched" \
-        "$RES_RestoredFolders" "$s_deleted" "$RES_DeletedFolders" "$s_deleted"
+        "$safe_restored_files" "$s_restored" "$safe_deleted_files" "$s_deleted" "$safe_patched_files" "$s_patched" \
+        "$safe_restored_folders" "$s_deleted" "$safe_deleted_folders" "$s_deleted"
 
     if [ -n "$__resultvar" ]; then
         printf -v "$__resultvar" "%s" "$output"
@@ -322,11 +329,22 @@ function getOperationBackup () {
     getFriendlyFileSize 0 s_fdel
     getFriendlyFileSize 0 s_fmod
 
+    local safe_added_files safe_deleted_files safe_modified_files safe_opened_files safe_examined_files
+    local safe_added_folders safe_deleted_folders safe_modified_folders
+    escapeHTML "$RES_AddedFiles" safe_added_files
+    escapeHTML "$RES_DeletedFiles" safe_deleted_files
+    escapeHTML "$RES_ModifiedFiles" safe_modified_files
+    escapeHTML "$RES_OpenedFiles" safe_opened_files
+    escapeHTML "$RES_ExaminedFiles" safe_examined_files
+    escapeHTML "$RES_AddedFolders" safe_added_folders
+    escapeHTML "$RES_DeletedFolders" safe_deleted_folders
+    escapeHTML "$RES_ModifiedFolders" safe_modified_folders
+
     local output
     printf -v output "\n📂 <b>FILES:</b>         count       size\n➕ <b>Added:</b>        %7s %10s\n➖ <b>Deleted:</b>      %7s %10s\n🔧 <b>Changed:</b>      %7s %10s\n🔍 <b>Opened:</b>       %7s %10s\n🔎 <b>Examined:</b>     %7s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>\n➕ <b>Added:</b>        %7s %10s\n➖ <b>Deleted:</b>      %7s %10s\n🔧 <b>Changed:</b>      %7s %10s" \
-        "$RES_AddedFiles" "$s_add" "$RES_DeletedFiles" "$s_del" "$RES_ModifiedFiles" "$s_mod" \
-        "$RES_OpenedFiles" "$s_opn" "$RES_ExaminedFiles" "$s_exm" "$RES_AddedFolders" "$s_fadd" \
-        "$RES_DeletedFolders" "$s_fdel" "$RES_ModifiedFolders" "$s_fmod"
+        "$safe_added_files" "$s_add" "$safe_deleted_files" "$s_del" "$safe_modified_files" "$s_mod" \
+        "$safe_opened_files" "$s_opn" "$safe_examined_files" "$s_exm" "$safe_added_folders" "$s_fadd" \
+        "$safe_deleted_folders" "$s_fdel" "$safe_modified_folders" "$s_fmod"
 
     if [ -n "$__resultvar" ]; then
         printf -v "$__resultvar" "%s" "$output"
