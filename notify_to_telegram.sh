@@ -81,10 +81,13 @@ TELEGRAM_URL="https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage"
 
 # Auto-update: check GitHub for a newer version and replace itself
 auto_update() {
-    local latest_version tmp_script cache_file first_line latest_tag dl_url DOWNLOAD_REF
+    local latest_version tmp_script cache_file cache_failure_file first_line latest_tag dl_url DOWNLOAD_REF uid_cache
+    uid_cache="${EUID:-$(id -u)}"
     local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/duplicati-telegram"
     mkdir -p "$cache_dir" 2>/dev/null || cache_dir="${TMPDIR:-/tmp}"
-    cache_file="$cache_dir/.duplicati_telegram_version_cache_$(id -u)"
+    cache_file="$cache_dir/.duplicati_telegram_version_cache_$uid_cache"
+    # ⚡ Bolt Optimization: Negative cache file to prevent repeated 10s network timeouts when offline
+    cache_failure_file="$cache_dir/.duplicati_telegram_version_cache_failure_$uid_cache"
 
     # Determine the latest release. Hybrid strategy:
     # 1) Prefer the official GitHub "latest release" (tag vX.Y.Z) via the API.
@@ -93,6 +96,9 @@ auto_update() {
     # The result is cached for 24 hours to avoid a blocking request on every run.
     if [ -f "$cache_file" ] && [ -n "$(find "$cache_file" -mmin -1440 2>/dev/null)" ]; then
         IFS= read -r latest_version < "$cache_file"
+    # If a previous network check failed recently (e.g., within 60 mins), skip the check to avoid blocking
+    elif [ -f "$cache_failure_file" ] && [ -n "$(find "$cache_failure_file" -mmin -60 2>/dev/null)" ]; then
+        return
     else
         # ⚡ Bolt Optimization: Use HTTP HEAD request to the GitHub web release redirect instead of fetching
         # the entire JSON API payload. Then, parse the Location header using native Bash regex.
@@ -119,6 +125,10 @@ auto_update() {
             tmp_cache=$(mktemp "${cache_dir}/.version_cache_tmp_XXXXXX")
             printf "%s\n" "$latest_version" > "$tmp_cache"
             mv -f "$tmp_cache" "$cache_file"
+            rm -f "$cache_failure_file"
+        else
+            # ⚡ Bolt Optimization: Cache the network failure to avoid 10s timeout on the next run
+            touch "$cache_failure_file" 2>/dev/null
         fi
     fi
     [ -z "$latest_version" ] && return
@@ -128,7 +138,7 @@ auto_update() {
     if [ "$latest_version" != "$SCRIPT_VERSION" ] && [ "$(printf '%s\n' "$SCRIPT_VERSION" "$latest_version" | sort -V | tail -1)" = "$latest_version" ]; then
         local cache_dir="${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}"
         mkdir -p "$cache_dir" 2>/dev/null || cache_dir="/tmp"
-        tmp_script=$(mktemp "$cache_dir/notify_to_telegram_$(id -u)_XXXXXX")
+        tmp_script=$(mktemp "$cache_dir/notify_to_telegram_${uid_cache}_XXXXXX")
 
         # Download the script from the same source that reported the latest version:
         # a release tag -> that tag on raw.githubusercontent.com; fallback -> main branch.
