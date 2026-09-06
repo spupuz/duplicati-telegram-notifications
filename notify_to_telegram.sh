@@ -128,7 +128,9 @@ auto_update() {
             rm -f "$cache_failure_file"
         else
             # ⚡ Bolt Optimization: Cache the network failure to avoid 10s timeout on the next run
-            touch "$cache_failure_file" 2>/dev/null
+            local tmp_failure
+            tmp_failure=$(mktemp "${cache_dir}/.version_cache_failure_tmp_XXXXXX")
+            mv -f "$tmp_failure" "$cache_failure_file" 2>/dev/null || rm -f "$tmp_failure"
         fi
     fi
     [ -z "$latest_version" ] && return
