@@ -128,7 +128,12 @@ auto_update() {
             rm -f "$cache_failure_file"
         else
             # ⚡ Bolt Optimization: Cache the network failure to avoid 10s timeout on the next run
-            touch "$cache_failure_file" 2>/dev/null
+            # 🛡️ Sentinel Security Fix: Prevent Symlink Arbitrary File Overwrite by using a secure temporary file
+            local tmp_fail_cache
+            tmp_fail_cache=$(mktemp "${cache_dir}/.version_cache_failure_tmp_XXXXXX")
+            if [ -n "$tmp_fail_cache" ]; then
+                mv -f "$tmp_fail_cache" "$cache_failure_file" 2>/dev/null
+            fi
         fi
     fi
     [ -z "$latest_version" ] && return
