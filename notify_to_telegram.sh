@@ -37,7 +37,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_FILE="$(basename "${BASH_SOURCE[0]}")"
 SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_FILE"
 
-SCRIPT_VERSION="1.3.3"
+SCRIPT_VERSION="1.4.0"
 GITHUB_OWNER="spupuz"
 GITHUB_REPO="duplicati-telegram-notifications"
 GITHUB_RAW_BASE="https://raw.githubusercontent.com/$GITHUB_OWNER/$GITHUB_REPO/main"
