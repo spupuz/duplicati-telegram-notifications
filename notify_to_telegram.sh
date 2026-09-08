@@ -230,7 +230,8 @@ function parseResultFile () {
         key="${key//[[:space:]]/}"
         val="${val#"${val%%[![:space:]]*}"}"
         val="${val%$'\r'}"
-        if [[ "$key" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]; then
+        # ⚡ Bolt Optimization: Replaced regex with native bash globbing for faster string validation in loops
+        if [[ -n "$key" && "$key" != *[!a-zA-Z0-9_]* && "$key" != [0-9]* ]]; then
             printf -v "RES_$key" "%s" "$val"
         fi
     done < "$DUPLICATI__RESULTFILE"
