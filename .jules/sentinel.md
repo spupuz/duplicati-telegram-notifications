@@ -1,4 +1,0 @@
-## 2024-09-06 - Prevent CWE-59 Arbitrary File Overwrite with Cache Files
-**Vulnerability:** The script used `touch "$cache_failure_file" 2>/dev/null` with a predictable file path in a potentially shared directory (`/tmp` fallback). This allows for Symlink Arbitrary File Overwrite vulnerabilities where an attacker could create a symlink at the target path, tricking the script into modifying the timestamps or creating arbitrary files with the script runner's permissions.
-**Learning:** Even innocent commands like `touch` are vulnerable to symlink attacks when operating in shared directories like `/tmp`. The problem is predictable paths and non-atomic file creation.
-**Prevention:** Never use direct file creation commands (`touch`, `>`) on predictable paths in shared directories. Always use `mktemp` to securely generate a unique, unguessable file path with safe permissions (600), and then atomically move (`mv -f`) it to the final destination.
