@@ -160,7 +160,8 @@ auto_update() {
                 return
             fi
             if ! diff -q "$tmp_script" "$SCRIPT_PATH" &>/dev/null; then
-                cp "$tmp_script" "$SCRIPT_PATH" && chmod +x "$SCRIPT_PATH"
+                # 🛡️ Sentinel Security Fix: Use mv -f instead of cp to prevent CWE-59 Symlink Arbitrary File Overwrite
+                chmod +x "$tmp_script" && mv -f "$tmp_script" "$SCRIPT_PATH"
                 rm -f "$tmp_script"
                 export UPDATED_FROM_VERSION="$SCRIPT_VERSION"
                 exec "$SCRIPT_PATH" "$@"
@@ -202,6 +203,8 @@ function getFriendlyFileSize() {
             size=0
             ;;
     esac
+    # 🛡️ Sentinel Security Fix: Parse as base 10 to prevent octal evaluation errors with leading zeros
+    size=$((10#$size))
     # ⚡ Bolt Optimization: Replaced awk subshells with native bash integer arithmetic to prevent fork/exec overhead.
     if [ "$size" -eq 0 ]; then
         val='-'
