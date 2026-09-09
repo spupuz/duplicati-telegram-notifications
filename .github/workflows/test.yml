@@ -1,0 +1,16 @@
+name: Test
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Run syntax check
+        run: bash -n notify_to_telegram.sh
+      - name: Run functional test
+        run: bash scripts/test_notify.sh

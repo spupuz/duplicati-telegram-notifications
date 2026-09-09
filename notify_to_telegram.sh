@@ -107,6 +107,8 @@ auto_update() {
         headers=$(curl -sI --connect-timeout 5 --max-time 5 --proto '=https' "$GITHUB_RELEASE_LATEST" 2>/dev/null)
         if [[ "$headers" =~ [Ll]ocation:[[:space:]]*.*/tag/([^[:space:]$'\r\n']+) ]]; then
             latest_tag="${BASH_REMATCH[1]}"
+            # 🛡️ Sentinel Security Fix: Prevent Path Traversal in GitHub URL redirect
+            if [[ "$latest_tag" == *"../"* || "$latest_tag" == *"/"* ]]; then return; fi
         fi
 
         if [ -n "$latest_tag" ]; then
@@ -122,7 +124,7 @@ auto_update() {
         fi
         if [ -n "$latest_version" ]; then
             local tmp_cache
-            tmp_cache=$(mktemp "${cache_dir}/.version_cache_tmp_XXXXXX")
+            tmp_cache=$(mktemp "${cache_dir}/.version_cache_tmp_${uid_cache}_XXXXXX")
             printf "%s\n" "$latest_version" > "$tmp_cache"
             mv -f "$tmp_cache" "$cache_file"
             rm -f "$cache_failure_file"
@@ -130,7 +132,7 @@ auto_update() {
             # ⚡ Bolt Optimization: Cache the network failure to avoid 10s timeout on the next run
             # 🛡️ Sentinel Security Fix: Prevent Symlink Arbitrary File Overwrite by using a secure temporary file
             local tmp_failure
-            tmp_failure=$(mktemp "${cache_dir}/.version_cache_failure_tmp_XXXXXX")
+            tmp_failure=$(mktemp "${cache_dir}/.version_cache_failure_tmp_${uid_cache}_XXXXXX")
             if [ -n "$tmp_failure" ]; then
                 mv -f "$tmp_failure" "$cache_failure_file" 2>/dev/null || rm -f "$tmp_failure"
             fi
@@ -141,7 +143,8 @@ auto_update() {
     : "${DOWNLOAD_REF:=v${latest_version}}"
 
     if [ "$latest_version" != "$SCRIPT_VERSION" ] && [ "$(printf '%s\n' "$SCRIPT_VERSION" "$latest_version" | sort -V | tail -1)" = "$latest_version" ]; then
-        local cache_dir="${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}"
+        local cache_dir="${XDG_CACHE_HOME:-${HOME:+$HOME/.cache}}"
+        cache_dir="${cache_dir:-${TMPDIR:-/tmp}}"
         mkdir -p "$cache_dir" 2>/dev/null || cache_dir="/tmp"
         tmp_script=$(mktemp "$cache_dir/notify_to_telegram_${uid_cache}_XXXXXX")
 
