@@ -96,6 +96,10 @@ auto_update() {
     # The result is cached for 24 hours to avoid a blocking request on every run.
     if [ -f "$cache_file" ] && [ -n "$(find "$cache_file" -mmin -1440 2>/dev/null)" ]; then
         IFS= read -r latest_version < "$cache_file"
+        # 🛡️ Sentinel Security Fix: Validate cached version to prevent cache poisoning/path traversal
+        if [[ "$latest_version" == *[!a-zA-Z0-9.-]* ]]; then
+            return
+        fi
     # If a previous network check failed recently (e.g., within 60 mins), skip the check to avoid blocking
     elif [ -f "$cache_failure_file" ] && [ -n "$(find "$cache_failure_file" -mmin -60 2>/dev/null)" ]; then
         return

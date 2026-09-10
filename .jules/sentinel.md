@@ -14,3 +14,7 @@
 **Vulnerability:** In multi-user environments (e.g., shared CI servers), falling back to a hardcoded path like `/tmp/.cache` and creating temporary cache files without the Effective User ID (EUID) can cause permission collisions if multiple users run the script simultaneously or if directories created by one user block others.
 **Learning:** Hardcoded shared hidden directories (e.g., `/tmp/.cache`) are unsafe in multi-user systems. Un-prefixed `mktemp` cache files might not clash in file names, but they clutter and violate security isolation best practices.
 **Prevention:** Always append the EUID (e.g., `_${uid_cache}`) to all cache/temporary filenames and use the native `${TMPDIR:-/tmp}` directly instead of nesting a `.cache` folder within `/tmp`.
+## 2026-09-10 - Prevent Path Traversal from Untrusted Cache
+**Vulnerability:** A Cache Poisoning vulnerability could lead to Path Traversal and Remote Code Execution. The `latest_version` was read from a shared cache file (e.g., in `/tmp`) and interpolated into the `dl_url` without validation. If an attacker poisoned the cache with `../../../malware`, `curl` would download and the script would execute the malicious code.
+**Learning:** External variables sourced from untrusted storage (like shared cache directories) must be strictly validated before being interpolated into file paths or network URLs.
+**Prevention:** Always validate cached values using a strict allow-list (e.g., `*[!a-zA-Z0-9.-]*`) before using them in sensitive operations.
