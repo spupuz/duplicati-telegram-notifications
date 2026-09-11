@@ -64,7 +64,6 @@ if [ -f "$CONFIG_FILE" ]; then
         # Only allow specific configuration variables to prevent environment injection (e.g. overwriting PATH)
         if [[ "$key" == "TELEGRAM_TOKEN" || "$key" == "TELEGRAM_CHATID" || "$key" == "AUTO_UPDATE" || "$key" == "SKIP_UPDATE" ]]; then
             printf -v "$key" "%s" "$val"
-            export "$key"
         fi
     done < "$CONFIG_FILE"
 fi

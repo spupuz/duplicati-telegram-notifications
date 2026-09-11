@@ -18,3 +18,7 @@
 **Vulnerability:** A Cache Poisoning vulnerability could lead to Path Traversal and Remote Code Execution. The `latest_version` was read from a shared cache file (e.g., in `/tmp`) and interpolated into the `dl_url` without validation. If an attacker poisoned the cache with `../../../malware`, `curl` would download and the script would execute the malicious code.
 **Learning:** External variables sourced from untrusted storage (like shared cache directories) must be strictly validated before being interpolated into file paths or network URLs.
 **Prevention:** Always validate cached values using a strict allow-list (e.g., `*[!a-zA-Z0-9.-]*`) before using them in sensitive operations.
+## 2026-09-11 - Prevent Secret Leakage to Child Processes
+**Vulnerability:** Information Disclosure
+**Learning:** Exporting parsed secrets (like `TELEGRAM_TOKEN`) exposes them to the environment of all child processes invoked by the script, making them retrievable via `/proc/<pid>/environ` or environment error dumps.
+**Prevention:** Avoid `export` for sensitive configuration values. Only assign them to internal shell variables.
