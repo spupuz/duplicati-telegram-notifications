@@ -33,8 +33,12 @@ if ! command -v curl >/dev/null 2>&1; then
 fi
 
 # 1. Locate the script directory to load the relative configuration file
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT_FILE="$(basename "${BASH_SOURCE[0]}")"
+# ⚡ Bolt Optimization: Use native Bash parameter expansion instead of $(dirname) and $(basename)
+# subshells to eliminate fork/exec overhead when locating the script.
+SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
+[[ "$SCRIPT_DIR" == "${BASH_SOURCE[0]}" ]] && SCRIPT_DIR="."
+SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
+SCRIPT_FILE="${BASH_SOURCE[0]##*/}"
 SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_FILE"
 
 SCRIPT_VERSION="1.5.2"
