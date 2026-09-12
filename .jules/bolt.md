@@ -1,0 +1,3 @@
+## 2024-05-19 - Skip Parsing for Raw Log Lines
+**Learning:** In Bash `while read` loops parsing large files (like Duplicati's result logs), running multiple string manipulation operations (`//`, `%%`, etc.) on lines that don't match the expected delimiter structure (like raw diagnostic lines missing a `:`) causes significant CPU overhead. Evaluating these expressions is extremely expensive inside a loop.
+**Action:** Always place an early exit (short-circuit) condition, such as `[[ -z "$val" ]] && continue` when splitting by `IFS=':'`, at the very top of the loop before any string manipulation.
