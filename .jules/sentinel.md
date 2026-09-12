@@ -22,3 +22,7 @@
 **Vulnerability:** Information Disclosure
 **Learning:** Exporting parsed secrets (like `TELEGRAM_TOKEN`) exposes them to the environment of all child processes invoked by the script, making them retrievable via `/proc/<pid>/environ` or environment error dumps.
 **Prevention:** Avoid `export` for sensitive configuration values. Only assign them to internal shell variables.
+## 2026-09-11 - Prevent Denial of Service (DoS) via Telegram API limits
+**Vulnerability:** A Denial of Service (DoS) vulnerability existed due to a lack of input length limits for backup results. If a backup produced extremely long error details (e.g., massive `.NET` stack traces) or if environment variables like `DUPLICATI__backup_name` were excessively large, the final message payload would exceed the 4096-character limit of the Telegram API. This resulted in a HTTP 400 Bad Request error from Telegram and completely dropped the notification, silently hiding critical backup failures.
+**Learning:** External APIs often enforce strict payload limits. Simply passing through unconstrained input (especially stack traces or large logs) from external sources directly to these APIs can easily trigger these limits, resulting in silent notification failures (DoS).
+**Prevention:** Always implement input length truncation for potentially unbounded user-controlled input or external logs before formatting and transmitting them to restricted APIs like Telegram.
