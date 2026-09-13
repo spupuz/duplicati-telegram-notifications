@@ -245,6 +245,9 @@ function getFriendlyFileSize() {
 function parseResultFile () {
     [ -f "$DUPLICATI__RESULTFILE" ] || return
     while IFS=':' read -r key val || [ -n "$key" ]; do
+        # ⚡ Bolt Optimization: Early exit for lines without a delimiter to skip expensive string operations
+        [[ -z "$val" ]] && continue
+
         key="${key//[[:space:]]/}"
         val="${val#"${val%%[![:space:]]*}"}"
         val="${val%$'\r'}"
