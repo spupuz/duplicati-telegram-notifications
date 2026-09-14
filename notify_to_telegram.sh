@@ -26,6 +26,10 @@
 # Skip immediately if operation is List to avoid unnecessary loading and network requests
 if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
 
+# 🛡️ Sentinel Security Fix: Truncate excessively long environment variables to prevent DoS via Telegram API length limits
+DUPLICATI__backup_name="${DUPLICATI__backup_name:0:1500}"
+DUPLICATI__OPERATIONNAME="${DUPLICATI__OPERATIONNAME:0:1500}"
+
 # ⚡ Bolt Optimization: Early exit if curl is missing to avoid environment loading, parsing, and execution overhead
 if ! command -v curl >/dev/null 2>&1; then
     echo "Error: curl is required but not installed." >&2
@@ -252,6 +256,8 @@ function parseResultFile () {
         val="${val%$'\r'}"
         # ⚡ Bolt Optimization: Replaced regex with native bash globbing for faster string validation in loops
         if [[ -n "$key" && "$key" != *[!a-zA-Z0-9_]* && "$key" != [0-9]* ]]; then
+            # 🛡️ Sentinel Security Fix: Truncate excessively long parsed values to prevent DoS via Telegram API length limits
+            val="${val:0:1500}"
             printf -v "RES_$key" "%s" "$val"
         fi
     done < "$DUPLICATI__RESULTFILE"
