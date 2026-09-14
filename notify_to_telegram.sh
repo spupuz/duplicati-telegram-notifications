@@ -314,7 +314,7 @@ function getResultFatal () {
     local __resultvar="$1"
     local safe_failed safe_details
 
-    # 🛡️ Sentinel Security Fix: Truncate unbounded inputs (like stack traces) to prevent
+# 🛡️ Sentinel Security Fix: Truncate unbounded inputs (like stack traces) to prevent
     # 400 Bad Request errors (DoS) due to exceeding Telegram's 4096-character limit.
     local truncated_failed="${RES_Failed:0:1500}"
     local truncated_details="${RES_Details:0:1500}"
