@@ -305,8 +305,19 @@ ${RESULT_ICON} <b>Result:</b>    $safe_result
 function getResultFatal () {
     local __resultvar="$1"
     local safe_failed safe_details
-    escapeHTML "$RES_Failed" safe_failed
-    escapeHTML "$RES_Details" safe_details
+
+    # 🛡️ Sentinel Security Fix: Truncate unbounded inputs (like stack traces) to prevent
+    # 400 Bad Request errors (DoS) due to exceeding Telegram's 4096-character limit.
+    local truncated_failed="${RES_Failed:0:1500}"
+    local truncated_details="${RES_Details:0:1500}"
+
+    # Add ellipsis if truncated
+    [[ "${#RES_Failed}" -gt 1500 ]] && truncated_failed="${truncated_failed}..."
+    [[ "${#RES_Details}" -gt 1500 ]] && truncated_details="${truncated_details}..."
+
+    escapeHTML "$truncated_failed" safe_failed
+    escapeHTML "$truncated_details" safe_details
+
     # ⚡ Bolt Optimization: Pre-formatted string to avoid runtime loop trimming.
     local output="❗ <b>Error:</b> $safe_failed
 📋 <b>Details:</b> $safe_details"

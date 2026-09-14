@@ -22,3 +22,7 @@
 **Vulnerability:** Information Disclosure
 **Learning:** Exporting parsed secrets (like `TELEGRAM_TOKEN`) exposes them to the environment of all child processes invoked by the script, making them retrievable via `/proc/<pid>/environ` or environment error dumps.
 **Prevention:** Avoid `export` for sensitive configuration values. Only assign them to internal shell variables.
+## 2026-09-12 - Prevent Silent Notification Drops (DoS)
+**Vulnerability:** A localized Denial of Service (DoS) vulnerability could occur if a backup failed with a large stack trace. Unbounded variables like `RES_Failed` and `RES_Details` were sent directly to the Telegram API. If the payload exceeded Telegram's 4096-character limit, the API would return a 400 Bad Request error, causing the notification to be silently dropped.
+**Learning:** External APIs often enforce strict payload limits. Sending unbounded input (like application stack traces) without truncation can lead to silent failures where critical error alerts are never received.
+**Prevention:** Always truncate unbounded input using native Bash substring expansion (e.g., `${var:0:1500}`) before transmission to prevent exceeding API limits.
