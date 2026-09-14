@@ -245,6 +245,10 @@ function getFriendlyFileSize() {
 function parseResultFile () {
     [ -f "$DUPLICATI__RESULTFILE" ] || return
     while IFS=':' read -r key val || [ -n "$key" ]; do
+        # ⚡ Bolt Optimization: Short-circuit lines without a colon delimiter (e.g. stack traces)
+        # to avoid expensive string manipulation in the loop.
+        [[ -z "$val" ]] && continue
+
         key="${key//[[:space:]]/}"
         val="${val#"${val%%[![:space:]]*}"}"
         val="${val%$'\r'}"
