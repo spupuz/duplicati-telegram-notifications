@@ -29,6 +29,8 @@ if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
 # 🛡️ Sentinel Security Fix: Truncate excessively long environment variables to prevent DoS via Telegram API length limits
 DUPLICATI__backup_name="${DUPLICATI__backup_name:0:1500}"
 DUPLICATI__OPERATIONNAME="${DUPLICATI__OPERATIONNAME:0:1500}"
+DUPLICATI__EVENTNAME="${DUPLICATI__EVENTNAME:0:1500}"
+DUPLICATI__PARSED_RESULT="${DUPLICATI__PARSED_RESULT:0:1500}"
 
 # ⚡ Bolt Optimization: Early exit if curl is missing to avoid environment loading, parsing, and execution overhead
 if ! command -v curl >/dev/null 2>&1; then
