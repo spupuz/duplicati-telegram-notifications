@@ -1,3 +1,0 @@
-## 2024-05-14 - Optimize large file parsing with grep process substitution
-**Learning:** Native Bash `while read` loops are extremely slow at iterating over thousands of lines. Relying on early exits (`[[ -z "$val" ]] && continue`) inside the loop is insufficient if the file contains a massive number of invalid lines (e.g., generic log output in a backup file), causing significant, measurable CPU bottlenecking.
-**Action:** When parsing specific line formats (like key-value pairs) from potentially large files, always pre-filter the input using a highly optimized C binary like `grep` via process substitution (e.g., `< <(grep ":" file)`) before feeding it to the Bash loop. This instantly drops irrelevant lines and radically speeds up parsing.
