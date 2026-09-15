@@ -248,8 +248,10 @@ function getFriendlyFileSize() {
 # Securely parse the result file to avoid command injection
 function parseResultFile () {
     [ -f "$DUPLICATI__RESULTFILE" ] || return
+    # ⚡ Bolt Optimization: Use process substitution with grep to instantly strip unparseable lines
+    # before they reach the slow Bash read loop. This prevents significant CPU overhead when parsing
+    # large backup log files filled with generic, non-colon-separated output.
     while IFS=':' read -r key val || [ -n "$key" ]; do
-        # ⚡ Bolt Optimization: Early return for log lines without colons to skip unnecessary string parsing
         [[ -z "$val" ]] && continue
         key="${key//[[:space:]]/}"
         val="${val#"${val%%[![:space:]]*}"}"
@@ -260,7 +262,7 @@ function parseResultFile () {
             val="${val:0:1500}"
             printf -v "RES_$key" "%s" "$val"
         fi
-    done < "$DUPLICATI__RESULTFILE"
+    done < <(grep ":" "$DUPLICATI__RESULTFILE")
 }
 
 # Function to generate the result line with appropriate icon
