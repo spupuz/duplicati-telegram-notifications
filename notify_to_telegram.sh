@@ -256,14 +256,15 @@ function parseResultFile () {
     while IFS=':' read -r key val || [ -n "$key" ]; do
         [[ -z "$val" ]] && continue
         key="${key//[[:space:]]/}"
+        # ⚡ Bolt Optimization: Early exit for invalid keys before doing expensive value string manipulations
+        if [[ -z "$key" || "$key" == *[!a-zA-Z0-9_]* || "$key" == [0-9]* ]]; then
+            continue
+        fi
         val="${val#"${val%%[![:space:]]*}"}"
         val="${val%$'\r'}"
-        # ⚡ Bolt Optimization: Replaced regex with native bash globbing for faster string validation in loops
-        if [[ -n "$key" && "$key" != *[!a-zA-Z0-9_]* && "$key" != [0-9]* ]]; then
-            # 🛡️ Sentinel Security Fix: Truncate excessively long parsed values to prevent DoS via Telegram API length limits
-            val="${val:0:1500}"
-            printf -v "RES_$key" "%s" "$val"
-        fi
+        # 🛡️ Sentinel Security Fix: Truncate excessively long parsed values to prevent DoS via Telegram API length limits
+        val="${val:0:1500}"
+        printf -v "RES_$key" "%s" "$val"
     done < <(grep ":" "$DUPLICATI__RESULTFILE")
 }
 
