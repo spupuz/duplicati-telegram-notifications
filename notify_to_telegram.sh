@@ -86,6 +86,18 @@ if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHATID" ]; then
     exit 1
 fi
 
+# 🛡️ Sentinel Security Fix: Validate TELEGRAM_TOKEN and TELEGRAM_CHATID format to prevent SSRF
+# and URL manipulation when constructing the Telegram API URL.
+if [[ ! "$TELEGRAM_TOKEN" =~ ^[0-9]+:[a-zA-Z0-9_-]+$ ]]; then
+    echo "Error: TELEGRAM_TOKEN has an invalid format!" >&2
+    exit 1
+fi
+
+if [[ ! "$TELEGRAM_CHATID" =~ ^-?[0-9]+$ ]] && [[ ! "$TELEGRAM_CHATID" =~ ^@[a-zA-Z0-9_]+$ ]]; then
+    echo "Error: TELEGRAM_CHATID has an invalid format!" >&2
+    exit 1
+fi
+
 TELEGRAM_URL="https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage"
 
 # Auto-update: check GitHub for a newer version and replace itself
