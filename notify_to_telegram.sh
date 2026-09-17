@@ -86,6 +86,18 @@ if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHATID" ]; then
     exit 1
 fi
 
+# 🛡️ Sentinel Security Fix: Validate external credentials against strict allow-lists before interpolating
+# them into network URLs to prevent Server-Side Request Forgery (SSRF) and URL manipulation vulnerabilities.
+if [[ ! "$TELEGRAM_TOKEN" =~ ^[0-9]+:[a-zA-Z0-9_-]+$ ]]; then
+    echo "Error: Invalid TELEGRAM_TOKEN format." >&2
+    exit 1
+fi
+
+if [[ ! "$TELEGRAM_CHATID" =~ ^-?[0-9]+$ ]] && [[ ! "$TELEGRAM_CHATID" =~ ^@[a-zA-Z0-9_]+$ ]]; then
+    echo "Error: Invalid TELEGRAM_CHATID format." >&2
+    exit 1
+fi
+
 TELEGRAM_URL="https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage"
 
 # Auto-update: check GitHub for a newer version and replace itself

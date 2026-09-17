@@ -34,3 +34,8 @@
 **Vulnerability:** A Denial of Service (DoS) vulnerability existed because `DUPLICATI__EVENTNAME` and `DUPLICATI__PARSED_RESULT` were not truncated before being sent to the Telegram API. An attacker or unexpected system behavior could provide excessively long values, causing the message payload to exceed the 4096-character limit of the Telegram API, which results in a HTTP 400 Bad Request error and completely drops the notification.
 **Learning:** External APIs often enforce strict payload limits. All unbounded input (including event names and parsed results) should be truncated.
 **Prevention:** Always implement input length truncation for potentially unbounded user-controlled input or environment variables before formatting and transmitting them to restricted APIs like Telegram.
+
+## 2024-05-20 - Prevent SSRF via Telegram API Credentials
+**Vulnerability:** Server-Side Request Forgery (SSRF) and URL manipulation via unvalidated `TELEGRAM_TOKEN` and `TELEGRAM_CHATID` variables in shell scripts.
+**Learning:** Shell variables loaded from `.env` files or environment exports might contain structural URL characters (e.g., `../`, `?`, `#`) that can alter intended API requests, particularly when directly interpolated into URLs.
+**Prevention:** Always validate external API credentials and identifiers using strict regular expressions (allow-lists) before interpolating them into network request URLs.
