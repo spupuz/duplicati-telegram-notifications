@@ -277,7 +277,8 @@ function parseResultFile () {
         # 🛡️ Sentinel Security Fix: Truncate excessively long parsed values to prevent DoS via Telegram API length limits
         val="${val:0:1500}"
         printf -v "RES_$key" "%s" "$val"
-    done < <(grep ":" "$DUPLICATI__RESULTFILE")
+    # ⚡ Bolt Optimization: Use strict regex to exclude unrelated lines (e.g. timestamps with hyphens) before bash loop
+    done < <(grep '^[[:space:]]*[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]*:' "$DUPLICATI__RESULTFILE")
 }
 
 # Function to generate the result line with appropriate icon
