@@ -466,6 +466,16 @@ fi
 MESSAGE+="
 </pre>"
 
+# 🎨 Palette UX Enhancement: Add clickable tags for easy filtering in Telegram
+clean_op="${DUPLICATI__OPERATIONNAME//[^a-zA-Z0-9_]/}"
+clean_result="${DUPLICATI__PARSED_RESULT//[^a-zA-Z0-9_]/}"
+tags="#Duplicati"
+[ -n "$clean_op" ] && tags+=" #${clean_op}"
+[ -n "$clean_result" ] && tags+=" #${clean_result}"
+MESSAGE+="
+$tags
+"
+
 # Append script version info to the message
 if [ -n "$UPDATED_FROM_VERSION" ] && [ "$UPDATED_FROM_VERSION" != "$SCRIPT_VERSION" ]; then
     MESSAGE+="🔄 <b>Script updated:</b> v${UPDATED_FROM_VERSION} → v${SCRIPT_VERSION}"
