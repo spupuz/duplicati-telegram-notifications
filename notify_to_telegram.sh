@@ -238,16 +238,18 @@ function getFriendlyFileSize() {
         val='-'
     elif [ "$size" -ge 1099511627776 ]; then
         val=$(( (size * 100 / 1099511627776 + 5) / 10 ))
-        val="$((val / 10)).$((val % 10))Tb"
+        val="$((val / 10)).$((val % 10)) TB"
     elif [ "$size" -ge 1073741824 ]; then
         val=$(( (size * 100 / 1073741824 + 5) / 10 ))
-        val="$((val / 10)).$((val % 10))Gb"
+        val="$((val / 10)).$((val % 10)) GB"
     elif [ "$size" -ge 1048576 ]; then
         val=$(( (size * 100 / 1048576 + 5) / 10 ))
-        val="$((val / 10)).$((val % 10))Mb"
+        val="$((val / 10)).$((val % 10)) MB"
     elif [ "$size" -ge 1024 ]; then
         val=$(( (size * 100 / 1024 + 5) / 10 ))
-        val="$((val / 10)).$((val % 10))Kb"
+        val="$((val / 10)).$((val % 10)) KB"
+    elif [ "$size" -gt 0 ]; then
+        val="${size} B"
     else
         val='-'
     fi
