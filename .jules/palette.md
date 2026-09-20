@@ -5,3 +5,7 @@
 ## 2024-09-19 - Screen Reader File Size Pronunciation
 **Learning:** Screen readers often mispronounce incorrectly cased or unspaced file size units (e.g., "Mb" as "Megabits" instead of "Megabytes", or reading them as a single unrecognized word).
 **Action:** Always use a space between the number and the unit, and use standard uppercase abbreviations (e.g., " MB", " KB") for bytes to ensure accurate accessibility parsing.
+
+## 2024-09-18 - Screen Reader Pronunciation of File Sizes
+**Learning:** Screen readers mispronounce file sizes when the number and unit are concatenated (e.g., "1.5Mb") or when using mixed-case abbreviations (like "Mb" instead of "MB" for megabytes). This can cause confusion, such as reading "Mb" as "megabits" or an unrecognized word instead of "megabytes."
+**Action:** Always format file sizes with a space between the numeric value and the unit, and use standard uppercase abbreviations (e.g., "1.5 MB"). This ensures that screen readers pronounce them correctly as bytes.

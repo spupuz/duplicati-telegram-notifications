@@ -47,7 +47,7 @@ SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
 SCRIPT_FILE="${BASH_SOURCE[0]##*/}"
 SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_FILE"
 
-SCRIPT_VERSION="1.8.0"
+SCRIPT_VERSION="1.9.0"
 GITHUB_OWNER="spupuz"
 GITHUB_REPO="duplicati-telegram-notifications"
 GITHUB_RAW_BASE="https://raw.githubusercontent.com/$GITHUB_OWNER/$GITHUB_REPO/main"
@@ -195,6 +195,9 @@ auto_update() {
                 chmod +x "$tmp_script" && mv -f "$tmp_script" "$SCRIPT_PATH"
                 rm -f "$tmp_script"
                 export UPDATED_FROM_VERSION="$SCRIPT_VERSION"
+                # 🔧 Re-export the credentials for the self-reexec only: they were stripped from the
+                # environment above, but ENV-configured installs (Docker) have no config file to reload.
+                export TELEGRAM_TOKEN TELEGRAM_CHATID
                 exec "$SCRIPT_PATH" "$@"
             fi
         fi
