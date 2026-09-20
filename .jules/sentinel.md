@@ -47,3 +47,7 @@
 **Vulnerability:** Argument Injection (CWE-88) occurred because user-controlled or environment-provided input (`DUPLICATI__RESULTFILE`) was passed directly to the `grep` command without being separated from options. If an attacker created a file named `-r` or `-V` and forced the script to parse it, `grep` would interpret the filename as a command-line flag instead of a file to read, potentially leading to information disclosure or unexpected behavior.
 **Learning:** Command-line utilities (like `grep`, `rm`, `cat`) parse arguments starting with `-` as options. Passing unvalidated variables directly to these tools can lead to argument injection if the variable value begins with a hyphen.
 **Prevention:** Always use the end-of-options delimiter `--` before passing untrusted variable content as positional arguments (e.g., filenames) to command-line tools to ensure they are strictly treated as operands, not flags.
+## 2024-05-20 - Un-export Inherited Secrets
+**Vulnerability:** Information Disclosure (CWE-200)
+**Learning:** Even if secrets are assigned internally, they might have been inherited from the parent environment (e.g. Docker ENV), remaining exported to all child processes spawned by the script.
+**Prevention:** Always explicitly use `export -n` on sensitive configuration variables to confine them to the internal shell environment and prevent leakage to child processes.
