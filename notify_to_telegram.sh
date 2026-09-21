@@ -241,7 +241,7 @@ function getFriendlyFileSize() {
     size=$((10#$size))
     # ⚡ Bolt Optimization: Replaced awk subshells with native bash integer arithmetic to prevent fork/exec overhead.
     if [ "$size" -eq 0 ]; then
-        val='-'
+        val='0 B'
     elif [ "$size" -ge 1099511627776 ]; then
         val=$(( (size * 100 / 1099511627776 + 5) / 10 ))
         val="$((val / 10)).$((val % 10)) TB"
@@ -257,7 +257,7 @@ function getFriendlyFileSize() {
     elif [ "$size" -gt 0 ]; then
         val="${size} B"
     else
-        val='-'
+        val='0 B'
     fi
 
     if [ -n "$__resultvar" ]; then
@@ -373,11 +373,11 @@ function getOperationRestore () {
     getFriendlyFileSize 0 s_patched
 
     local safe_restored_files safe_deleted_files safe_patched_files safe_restored_folders safe_deleted_folders
-    escapeHTML "$RES_RestoredFiles" safe_restored_files
-    escapeHTML "$RES_DeletedFiles" safe_deleted_files
-    escapeHTML "$RES_PatchedFiles" safe_patched_files
-    escapeHTML "$RES_RestoredFolders" safe_restored_folders
-    escapeHTML "$RES_DeletedFolders" safe_deleted_folders
+    escapeHTML "${RES_RestoredFiles:-0}" safe_restored_files
+    escapeHTML "${RES_DeletedFiles:-0}" safe_deleted_files
+    escapeHTML "${RES_PatchedFiles:-0}" safe_patched_files
+    escapeHTML "${RES_RestoredFolders:-0}" safe_restored_folders
+    escapeHTML "${RES_DeletedFolders:-0}" safe_deleted_folders
 
     local output
     printf -v output "\n📂 <b>FILES:</b>         count       size\n📥 <b>Restored:</b>     %7s %10s\n🗑️ <b>Deleted:</b>      %7s %10s\n🛠️ <b>Patched:</b>      %7s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>\n📂 <b>Restored:</b>     %7s %10s\n🗑️ <b>Deleted:</b>      %7s %10s" \
@@ -406,14 +406,14 @@ function getOperationBackup () {
 
     local safe_added_files safe_deleted_files safe_modified_files safe_opened_files safe_examined_files
     local safe_added_folders safe_deleted_folders safe_modified_folders
-    escapeHTML "$RES_AddedFiles" safe_added_files
-    escapeHTML "$RES_DeletedFiles" safe_deleted_files
-    escapeHTML "$RES_ModifiedFiles" safe_modified_files
-    escapeHTML "$RES_OpenedFiles" safe_opened_files
-    escapeHTML "$RES_ExaminedFiles" safe_examined_files
-    escapeHTML "$RES_AddedFolders" safe_added_folders
-    escapeHTML "$RES_DeletedFolders" safe_deleted_folders
-    escapeHTML "$RES_ModifiedFolders" safe_modified_folders
+    escapeHTML "${RES_AddedFiles:-0}" safe_added_files
+    escapeHTML "${RES_DeletedFiles:-0}" safe_deleted_files
+    escapeHTML "${RES_ModifiedFiles:-0}" safe_modified_files
+    escapeHTML "${RES_OpenedFiles:-0}" safe_opened_files
+    escapeHTML "${RES_ExaminedFiles:-0}" safe_examined_files
+    escapeHTML "${RES_AddedFolders:-0}" safe_added_folders
+    escapeHTML "${RES_DeletedFolders:-0}" safe_deleted_folders
+    escapeHTML "${RES_ModifiedFolders:-0}" safe_modified_folders
 
     local output
     printf -v output "\n📂 <b>FILES:</b>         count       size\n➕ <b>Added:</b>        %7s %10s\n➖ <b>Deleted:</b>      %7s %10s\n🔧 <b>Changed:</b>      %7s %10s\n🔍 <b>Opened:</b>       %7s %10s\n🔎 <b>Examined:</b>     %7s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>\n➕ <b>Added:</b>        %7s %10s\n➖ <b>Deleted:</b>      %7s %10s\n🔧 <b>Changed:</b>      %7s %10s" \
@@ -434,7 +434,7 @@ if [ "$DUPLICATI__EVENTNAME" == "AFTER" ]; then
     # and use native bash parameter expansion to extract Duration without expensive grep/sed/tr subshells.
     parseResultFile
     Duration="${RES_Duration%%.*}"
-    [ -z "$Duration" ] && Duration="--:--:--"
+    [ -z "$Duration" ] && Duration="00:00:00"
     getResultLine MESSAGE
     TEMP_MSG=""
     if [ "$DUPLICATI__OPERATIONNAME" == "Restore" ]; then
