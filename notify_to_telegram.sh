@@ -56,6 +56,8 @@ CONFIG_FILE="${SCRIPT_DIR}/telegram_config.env"
 
 # 2. Load variables securely from config file if it exists, preventing command injection
 if [ -f "$CONFIG_FILE" ]; then
+    # 🛡️ Sentinel Security Fix: Enforce strict permissions on the config file to prevent Information Disclosure
+    chmod 600 "$CONFIG_FILE" 2>/dev/null || true
     while IFS='=' read -r key val || [ -n "$key" ]; do
         # Trim whitespace from key
         key="${key#"${key%%[![:space:]]*}"}"

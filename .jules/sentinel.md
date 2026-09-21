@@ -51,3 +51,7 @@
 **Vulnerability:** Information Disclosure (CWE-200)
 **Learning:** Even if secrets are assigned internally, they might have been inherited from the parent environment (e.g. Docker ENV), remaining exported to all child processes spawned by the script.
 **Prevention:** Always explicitly use `export -n` on sensitive configuration variables to confine them to the internal shell environment and prevent leakage to child processes.
+## 2024-05-20 - Prevent Information Disclosure via Config File Permissions
+**Vulnerability:** Information Disclosure (CWE-200) could occur if a configuration file containing sensitive credentials (like `TELEGRAM_TOKEN`) was created with overly permissive file permissions (e.g., `644`), allowing other users on a shared system to read the secrets.
+**Learning:** Even if a script parses credentials securely, the underlying configuration file on disk remains a target. In shared or multi-user environments, users might inadvertently create config files with default `umask` permissions that allow world-read access.
+**Prevention:** Always programmatically enforce strict file permissions (e.g., `chmod 600`) before reading sensitive configuration files to guarantee that only the owner can access the credentials.
