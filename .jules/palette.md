@@ -9,3 +9,7 @@
 ## 2024-09-18 - Screen Reader Pronunciation of File Sizes
 **Learning:** Screen readers mispronounce file sizes when the number and unit are concatenated (e.g., "1.5Mb") or when using mixed-case abbreviations (like "Mb" instead of "MB" for megabytes). This can cause confusion, such as reading "Mb" as "megabits" or an unrecognized word instead of "megabytes."
 **Action:** Always format file sizes with a space between the numeric value and the unit, and use standard uppercase abbreviations (e.g., "1.5 MB"). This ensures that screen readers pronounce them correctly as bytes.
+
+## 2024-09-21 - Explicit Zero Values for Screen Readers
+**Learning:** Using dashes (`-`), blank spaces, or symbol placeholders (`--:--:--`) for zero-value data causes screen readers to either skip the value or read confusing literal symbols (like "dash" or "colon"). This lacks context for users relying on audio feedback.
+**Action:** Always explicitly render numerical zero values (e.g., `0` instead of blank, `0 B` instead of `-`, and `00:00:00` instead of `--:--:--`) to ensure screen readers announce the exact state clearly and provide visual consistency in tabular layouts.
