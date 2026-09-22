@@ -13,3 +13,7 @@
 ## 2024-09-21 - Explicit Zero Values for Screen Readers
 **Learning:** Using dashes (`-`), blank spaces, or symbol placeholders (`--:--:--`) for zero-value data causes screen readers to either skip the value or read confusing literal symbols (like "dash" or "colon"). This lacks context for users relying on audio feedback.
 **Action:** Always explicitly render numerical zero values (e.g., `0` instead of blank, `0 B` instead of `-`, and `00:00:00` instead of `--:--:--`) to ensure screen readers announce the exact state clearly and provide visual consistency in tabular layouts.
+
+## 2024-09-22 - Explicit Empty States for Dynamic Text
+**Learning:** Omitting dynamic log data (such as missing tasks, missing operations, or missing error details) without fallback text causes structural layout collapse and confuses screen readers when the context abruptly disappears.
+**Action:** Always use bash parameter expansion (`:-`) or explicit checks to provide explicit empty state placeholders (e.g., "Unknown Task", "No additional details provided.") to ensure structural consistency and accessibility for missing fields.

@@ -313,10 +313,10 @@ function getResultLine () {
     esac
 
     local safe_backup_name safe_op_name safe_status safe_result safe_duration
-    escapeHTML "$DUPLICATI__backup_name" safe_backup_name
-    escapeHTML "$DUPLICATI__OPERATIONNAME" safe_op_name
-    escapeHTML "$CURRENT_STATUS" safe_status
-    escapeHTML "$DUPLICATI__PARSED_RESULT" safe_result
+    escapeHTML "${DUPLICATI__backup_name:-Unknown Task}" safe_backup_name
+    escapeHTML "${DUPLICATI__OPERATIONNAME:-Unknown Operation}" safe_op_name
+    escapeHTML "${CURRENT_STATUS:-Unknown Status}" safe_status
+    escapeHTML "${DUPLICATI__PARSED_RESULT:-Unknown Result}" safe_result
     escapeHTML "$Duration" safe_duration
 
     # ⚡ Bolt Optimization: Pre-formatted string to avoid runtime loop trimming.
@@ -345,12 +345,16 @@ function getResultFatal () {
 
     # 🛡️ Sentinel Security Fix: Truncate unbounded inputs (like stack traces) to prevent
     # 400 Bad Request errors (DoS) due to exceeding Telegram's 4096-character limit.
-    local truncated_failed="${RES_Failed:0:1500}"
-    local truncated_details="${RES_Details:0:1500}"
+    # 🎨 Palette UX Enhancement: Provide explicit empty states for missing details
+    local failed_text="${RES_Failed:-Unknown Error}"
+    local details_text="${RES_Details:-No additional details provided.}"
+
+    local truncated_failed="${failed_text:0:1500}"
+    local truncated_details="${details_text:0:1500}"
 
     # Add ellipsis if truncated
-    [[ "${#RES_Failed}" -gt 1500 ]] && truncated_failed="${truncated_failed}..."
-    [[ "${#RES_Details}" -gt 1500 ]] && truncated_details="${truncated_details}..."
+    [[ "${#failed_text}" -gt 1500 ]] && truncated_failed="${truncated_failed}..."
+    [[ "${#details_text}" -gt 1500 ]] && truncated_details="${truncated_details}..."
 
     escapeHTML "$truncated_failed" safe_failed
     escapeHTML "$truncated_details" safe_details
@@ -460,9 +464,9 @@ else
     safe_backup_name=""
     safe_op_name=""
     safe_status=""
-    escapeHTML "$DUPLICATI__backup_name" safe_backup_name
-    escapeHTML "$DUPLICATI__OPERATIONNAME" safe_op_name
-    escapeHTML "$CURRENT_STATUS" safe_status
+    escapeHTML "${DUPLICATI__backup_name:-Unknown Task}" safe_backup_name
+    escapeHTML "${DUPLICATI__OPERATIONNAME:-Unknown Operation}" safe_op_name
+    escapeHTML "${CURRENT_STATUS:-Unknown Status}" safe_status
 
     MESSAGE="<b>💾 DUPLICATI BACKUP</b>
 <pre>
