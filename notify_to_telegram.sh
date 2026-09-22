@@ -489,9 +489,12 @@ $tags
 
 # Append script version info to the message
 if [ -n "$UPDATED_FROM_VERSION" ] && [ "$UPDATED_FROM_VERSION" != "$SCRIPT_VERSION" ]; then
-    MESSAGE+="🔄 <b>Script updated:</b> v${UPDATED_FROM_VERSION} → v${SCRIPT_VERSION}"
+    escapeHTML "$UPDATED_FROM_VERSION" safe_updated_version
+    escapeHTML "$SCRIPT_VERSION" safe_script_version
+    MESSAGE+="🔄 <b>Script updated:</b> v${safe_updated_version} → v${safe_script_version}"
 else
-    MESSAGE+="⚙️ <b>Script version:</b> v${SCRIPT_VERSION}"
+    escapeHTML "$SCRIPT_VERSION" safe_script_version
+    MESSAGE+="⚙️ <b>Script version:</b> v${safe_script_version}"
 fi
 
 # ⚡ Bolt Optimization: Removed detached subshell execution. Running asynchronously

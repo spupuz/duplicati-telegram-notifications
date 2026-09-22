@@ -55,3 +55,7 @@
 **Vulnerability:** Information Disclosure (CWE-200) could occur if a configuration file containing sensitive credentials (like `TELEGRAM_TOKEN`) was created with overly permissive file permissions (e.g., `644`), allowing other users on a shared system to read the secrets.
 **Learning:** Even if a script parses credentials securely, the underlying configuration file on disk remains a target. In shared or multi-user environments, users might inadvertently create config files with default `umask` permissions that allow world-read access.
 **Prevention:** Always programmatically enforce strict file permissions (e.g., `chmod 600`) before reading sensitive configuration files to guarantee that only the owner can access the credentials.
+## 2024-05-20 - Prevent HTML Injection (XSS) in Auto-Update Notification
+**Vulnerability:** A Cross-Site Scripting (XSS) / HTML Injection vulnerability existed because `$UPDATED_FROM_VERSION` and `$SCRIPT_VERSION` were directly interpolated into the `$MESSAGE` string sent to the Telegram API with `parse_mode=HTML`. If an attacker managed to manipulate these version variables (e.g., via a compromised GitHub repository or release tag), they could inject malicious HTML tags.
+**Learning:** Even internally sourced or seemingly safe external variables like software version strings must be treated as untrusted input when formatting for rich text APIs.
+**Prevention:** Always sanitize and escape variables using functions like `escapeHTML` before embedding them in HTML-formatted message payloads to prevent injection vulnerabilities.
