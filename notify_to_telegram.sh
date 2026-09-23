@@ -361,7 +361,9 @@ function getResultFatal () {
 
     # ⚡ Bolt Optimization: Pre-formatted string to avoid runtime loop trimming.
     local output="❗ <b>Error:</b> $safe_failed
-📋 <b>Details:</b> $safe_details"
+📋 <b>Details:</b> $safe_details
+———————————————————————————————
+💡 <b>Action:</b> Review the Duplicati web interface or host logs for complete diagnostic details."
 
     if [ -n "$__resultvar" ]; then
         printf -v "$__resultvar" "%s" "$output"
@@ -389,6 +391,11 @@ function getOperationRestore () {
     printf -v output "\n📂 <b>FILES:</b>         count       size\n📥 <b>Restored:</b>     %7s %10s\n🗑️ <b>Deleted:</b>      %7s %10s\n🛠️ <b>Patched:</b>      %7s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>\n📂 <b>Restored:</b>     %7s %10s\n🗑️ <b>Deleted:</b>      %7s %10s" \
         "$safe_restored_files" "$s_restored" "$safe_deleted_files" "$s_deleted" "$safe_patched_files" "$s_patched" \
         "$safe_restored_folders" "$s_deleted" "$safe_deleted_folders" "$s_deleted"
+
+    # 🎨 Palette UX Enhancement: Add helpful CTA for Warning/Error states
+    if [[ "$DUPLICATI__PARSED_RESULT" == "Warning" || "$DUPLICATI__PARSED_RESULT" == "Error" ]]; then
+        output+=$'\n———————————————————————————————\n💡 <b>Action:</b> Review the Duplicati web interface to resolve these issues.'
+    fi
 
     if [ -n "$__resultvar" ]; then
         printf -v "$__resultvar" "%s" "$output"
@@ -426,6 +433,11 @@ function getOperationBackup () {
         "$safe_added_files" "$s_add" "$safe_deleted_files" "$s_del" "$safe_modified_files" "$s_mod" \
         "$safe_opened_files" "$s_opn" "$safe_examined_files" "$s_exm" "$safe_added_folders" "$s_fadd" \
         "$safe_deleted_folders" "$s_fdel" "$safe_modified_folders" "$s_fmod"
+
+    # 🎨 Palette UX Enhancement: Add helpful CTA for Warning/Error states
+    if [[ "$DUPLICATI__PARSED_RESULT" == "Warning" || "$DUPLICATI__PARSED_RESULT" == "Error" ]]; then
+        output+=$'\n———————————————————————————————\n💡 <b>Action:</b> Review the Duplicati web interface to resolve these issues.'
+    fi
 
     if [ -n "$__resultvar" ]; then
         printf -v "$__resultvar" "%s" "$output"
