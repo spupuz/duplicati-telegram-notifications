@@ -17,3 +17,7 @@
 ## 2024-09-22 - Explicit Empty States for Dynamic Text
 **Learning:** Omitting dynamic log data (such as missing tasks, missing operations, or missing error details) without fallback text causes structural layout collapse and confuses screen readers when the context abruptly disappears.
 **Action:** Always use bash parameter expansion (`:-`) or explicit checks to provide explicit empty state placeholders (e.g., "Unknown Task", "No additional details provided.") to ensure structural consistency and accessibility for missing fields.
+
+## 2024-09-23 - Actionable Error States
+**Learning:** Displaying raw error logs without next steps leaves users feeling stuck. Adding a clear, actionable call-to-action (CTA) helps users recover from failure states faster.
+**Action:** Always pair fatal or critical error notifications with an explicit, helpful action step (e.g., "Check web interface for logs") to guide the user towards resolution.
