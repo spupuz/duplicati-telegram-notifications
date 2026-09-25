@@ -21,3 +21,7 @@
 ## 2024-09-23 - Actionable Error States
 **Learning:** Displaying raw error logs without next steps leaves users feeling stuck. Adding a clear, actionable call-to-action (CTA) helps users recover from failure states faster.
 **Action:** Always pair fatal or critical error notifications with an explicit, helpful action step (e.g., "Check web interface for logs") to guide the user towards resolution.
+
+## 2024-09-24 - Lock Screen Glanceability
+**Learning:** Static icons in notification headers force users to unlock their device or expand the notification to determine the status of a background process.
+**Action:** Always surface critical state information (like success/failure icons or loading spinners) directly in the first characters of the notification header to improve glanceability on lock screens.
