@@ -320,7 +320,8 @@ function getResultLine () {
     escapeHTML "$Duration" safe_duration
 
     # ⚡ Bolt Optimization: Pre-formatted string to avoid runtime loop trimming.
-    local output="<b>💾 DUPLICATI BACKUP</b>
+    # 🎨 Palette UX Enhancement: Dynamic header icon for better glanceability.
+    local output="<b>${RESULT_ICON:-💾} DUPLICATI BACKUP</b>
 <pre>
 ———————————————————————————————
 📋 <b>Task:</b>      $safe_backup_name
@@ -480,7 +481,13 @@ else
     escapeHTML "${DUPLICATI__OPERATIONNAME:-Unknown Operation}" safe_op_name
     escapeHTML "${CURRENT_STATUS:-Unknown Status}" safe_status
 
-    MESSAGE="<b>💾 DUPLICATI BACKUP</b>
+    # 🎨 Palette UX Enhancement: Dynamic header icon for better glanceability.
+    header_icon="💾"
+    if [ "$DUPLICATI__EVENTNAME" == "BEFORE" ]; then
+        header_icon="⏳"
+    fi
+
+    MESSAGE="<b>${header_icon} DUPLICATI BACKUP</b>
 <pre>
 ———————————————————————————————
 📋 <b>Task:</b>      $safe_backup_name
