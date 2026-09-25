@@ -1,3 +1,0 @@
-## 2024-05-20 - Prevent redundant fork/exec overhead for directory creation
-**Learning:** Calling external binaries like `mkdir` inside frequently executed code paths or loops introduces unnecessary fork/exec overhead, even if the directory already exists (e.g. `mkdir -p`).
-**Action:** Always pre-check for directory existence using native Bash conditionals (e.g., `[[ -d "$cache_dir" ]] || mkdir -p "$cache_dir"`) to short-circuit the execution and avoid spawning child processes when they are not needed.
