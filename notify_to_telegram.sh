@@ -26,6 +26,14 @@
 # Skip immediately if operation is List to avoid unnecessary loading and network requests
 if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
 
+# 🛡️ Sentinel Security Fix: Un-export all inherited DUPLICATI__* variables to prevent secret leakage to child processes.
+# This ensures that even if secrets like passwords or API keys are inherited as exported variables
+# from the parent environment (e.g. Docker ENV), they are strictly confined to this script's
+# internal shell environment and not leaked to spawned processes like curl or grep via /proc/<pid>/environ.
+for var in "${!DUPLICATI__@}"; do
+    export -n "$var"
+done
+
 # 🛡️ Sentinel Security Fix: Truncate excessively long environment variables to prevent DoS via Telegram API length limits
 DUPLICATI__backup_name="${DUPLICATI__backup_name:0:1500}"
 DUPLICATI__OPERATIONNAME="${DUPLICATI__OPERATIONNAME:0:1500}"
@@ -197,9 +205,12 @@ auto_update() {
                 chmod +x "$tmp_script" && mv -f "$tmp_script" "$SCRIPT_PATH"
                 rm -f "$tmp_script"
                 export UPDATED_FROM_VERSION="$SCRIPT_VERSION"
-                # 🔧 Re-export the credentials for the self-reexec only: they were stripped from the
+                # 🔧 Re-export the credentials and variables for the self-reexec only: they were stripped from the
                 # environment above, but ENV-configured installs (Docker) have no config file to reload.
                 export TELEGRAM_TOKEN TELEGRAM_CHATID
+                for var in "${!DUPLICATI__@}"; do
+                    export "$var"
+                done
                 exec "$SCRIPT_PATH" "$@"
             fi
         fi

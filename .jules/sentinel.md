@@ -1,3 +1,7 @@
+## 2026-09-13 - Prevent Secret Leakage from Inherited Environment Variables
+**Vulnerability:** Information Disclosure (CWE-200) occurred because sensitive environment variables (such as `DUPLICATI__passphrase` or `DUPLICATI__aws_secret_key`) inherited from the parent environment (e.g., Docker `ENV`) remained exported. These secrets could then be inadvertently exposed to the environment of all spawned child processes (such as `curl` or `grep`) and retrieved via `/proc/<pid>/environ`.
+**Learning:** Even if a script does not explicitly `export` a variable, any variables inherited as exports from the parent environment remain exported.
+**Prevention:** Always explicitly un-export (e.g., `export -n`) sensitive environment variables early in a script to strictly confine them to the script's internal shell environment and prevent leakage to spawned child processes.
 ## 2026-09-08 - Integer parsing base
 **Vulnerability:** Base-8 parsing error
 **Learning:** Leading zeros cause numbers to be treated as octal
