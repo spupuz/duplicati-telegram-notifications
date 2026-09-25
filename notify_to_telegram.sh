@@ -110,7 +110,8 @@ auto_update() {
     local latest_version tmp_script cache_file cache_failure_file first_line latest_tag dl_url DOWNLOAD_REF uid_cache
     uid_cache="${EUID:-$(id -u)}"
     local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/duplicati-telegram"
-    mkdir -p "$cache_dir" 2>/dev/null || cache_dir="${TMPDIR:-/tmp}"
+    # ⚡ Bolt Optimization: Use POSIX-compliant short-circuit `[ -d ]` to avoid fork/exec overhead for `mkdir -p` when cache exists
+    [ -d "$cache_dir" ] || mkdir -p "$cache_dir" 2>/dev/null || cache_dir="${TMPDIR:-/tmp}"
     cache_file="$cache_dir/.duplicati_telegram_version_cache_$uid_cache"
     # ⚡ Bolt Optimization: Negative cache file to prevent repeated 10s network timeouts when offline
     cache_failure_file="$cache_dir/.duplicati_telegram_version_cache_failure_$uid_cache"
@@ -175,7 +176,8 @@ auto_update() {
     if [ "$latest_version" != "$SCRIPT_VERSION" ] && [ "$(printf '%s\n' "$SCRIPT_VERSION" "$latest_version" | sort -V | tail -1)" = "$latest_version" ]; then
         local cache_dir="${XDG_CACHE_HOME:-${HOME:+$HOME/.cache}}"
         cache_dir="${cache_dir:-${TMPDIR:-/tmp}}"
-        mkdir -p "$cache_dir" 2>/dev/null || cache_dir="/tmp"
+        # ⚡ Bolt Optimization: Use POSIX-compliant short-circuit `[ -d ]` to avoid fork/exec overhead for `mkdir -p` when cache exists
+        [ -d "$cache_dir" ] || mkdir -p "$cache_dir" 2>/dev/null || cache_dir="/tmp"
         tmp_script=$(mktemp "$cache_dir/notify_to_telegram_${uid_cache}_XXXXXX")
 
         # Download the script from the same source that reported the latest version:
