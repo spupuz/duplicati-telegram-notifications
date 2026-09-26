@@ -535,6 +535,8 @@ fi
 
 # ⚡ Bolt Optimization: Removed detached subshell execution. Running asynchronously
 # drops the notification in short-lived environments before the request completes.
-curl -s --connect-timeout 10 --max-time 30 --proto '=https' "$TELEGRAM_URL" --data-urlencode "chat_id=$TELEGRAM_CHATID" --data-urlencode "text=$MESSAGE" --data-urlencode "parse_mode=HTML" > /dev/null 2>&1
+# 🛡️ Sentinel Security Fix: Pass the URL with the Telegram Token via curl's stdin config (-K -)
+# to prevent exposing the secret token in the system process list (ps aux) via command-line arguments.
+echo "url = \"$TELEGRAM_URL\"" | curl -K - -s --connect-timeout 10 --max-time 30 --proto '=https' --data-urlencode "chat_id=$TELEGRAM_CHATID" --data-urlencode "text=$MESSAGE" --data-urlencode "parse_mode=HTML" > /dev/null 2>&1
 
 exit 0
