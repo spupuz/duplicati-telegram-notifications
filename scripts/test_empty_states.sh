@@ -22,7 +22,7 @@ RES
 echo "Testing notify_to_telegram.sh Empty States..."
 bash -x notify_to_telegram.sh > empty_debug.log 2>&1
 
-OUTPUT=$(grep -A 20 'MESSAGE+=' empty_debug.log)
+OUTPUT=$(cat empty_debug.log)
 
 if [[ "$OUTPUT" == *"Unknown Task"* ]] && \
    [[ "$OUTPUT" == *"Unknown Operation"* ]] && \

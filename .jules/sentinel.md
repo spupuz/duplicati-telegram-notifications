@@ -63,3 +63,7 @@
 **Vulnerability:** A Cross-Site Scripting (XSS) / HTML Injection vulnerability existed because `$UPDATED_FROM_VERSION` and `$SCRIPT_VERSION` were directly interpolated into the `$MESSAGE` string sent to the Telegram API with `parse_mode=HTML`. If an attacker managed to manipulate these version variables (e.g., via a compromised GitHub repository or release tag), they could inject malicious HTML tags.
 **Learning:** Even internally sourced or seemingly safe external variables like software version strings must be treated as untrusted input when formatting for rich text APIs.
 **Prevention:** Always sanitize and escape variables using functions like `escapeHTML` before embedding them in HTML-formatted message payloads to prevent injection vulnerabilities.
+## 2026-09-13 - Prevent Information Disclosure in System Process Lists
+**Vulnerability:** Information Disclosure (CWE-200) in system process lists (e.g., via `ps aux` or `/proc/<pid>/cmdline`) occurred because sensitive configuration, like `TELEGRAM_URL` containing the `TELEGRAM_TOKEN` and `TELEGRAM_CHATID`, was passed as direct command-line arguments to the `curl` binary.
+**Learning:** External binaries invoked from scripts expose their arguments to the system process list, making sensitive data readable to local attackers or other users sharing the host.
+**Prevention:** Always pass sensitive data securely via standard input (e.g., using `curl -K -` piped with a shell builtin like `cat` or `echo`) instead of direct command-line arguments to external binaries.
