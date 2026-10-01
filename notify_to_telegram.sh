@@ -535,6 +535,12 @@ fi
 
 # ⚡ Bolt Optimization: Removed detached subshell execution. Running asynchronously
 # drops the notification in short-lived environments before the request completes.
-curl -s --connect-timeout 10 --max-time 30 --proto '=https' "$TELEGRAM_URL" --data-urlencode "chat_id=$TELEGRAM_CHATID" --data-urlencode "text=$MESSAGE" --data-urlencode "parse_mode=HTML" > /dev/null 2>&1
+# 🛡️ Sentinel Security Fix: Use process substitution (-K <(...)) to pass sensitive config to curl
+# and standard input (<<< "$MESSAGE") for the payload to prevent Information Disclosure (CWE-200)
+# and Argument Injection via the process list (/proc/<pid>/cmdline).
+curl -s --connect-timeout 10 --max-time 30 --proto '=https' \
+    -K <(printf 'url="%s"\ndata-urlencode="chat_id=%s"\n' "$TELEGRAM_URL" "$TELEGRAM_CHATID") \
+    --data-urlencode "parse_mode=HTML" \
+    --data-urlencode "text@-" <<< "$MESSAGE" > /dev/null 2>&1
 
 exit 0
