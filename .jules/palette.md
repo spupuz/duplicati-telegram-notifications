@@ -25,3 +25,7 @@
 ## 2024-09-24 - Lock Screen Glanceability
 **Learning:** Static icons in notification headers force users to unlock their device or expand the notification to determine the status of a background process.
 **Action:** Always surface critical state information (like success/failure icons or loading spinners) directly in the first characters of the notification header to improve glanceability on lock screens.
+
+## 2024-10-01 - Screen Reader Tabular Layout Context
+**Learning:** In monospaced tabular layouts with multiple sections, screen readers lose context if column headers aren't repeated for each section, making the data difficult to understand without sight.
+**Action:** Always repeat column headers for distinct data groups in text-based tabular layouts to ensure standalone clarity and preserve context for assistive technologies.
