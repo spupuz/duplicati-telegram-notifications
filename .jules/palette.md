@@ -29,3 +29,7 @@
 ## 2024-10-01 - Screen Reader Tabular Layout Context
 **Learning:** In monospaced tabular layouts with multiple sections, screen readers lose context if column headers aren't repeated for each section, making the data difficult to understand without sight.
 **Action:** Always repeat column headers for distinct data groups in text-based tabular layouts to ensure standalone clarity and preserve context for assistive technologies.
+
+## 2024-10-02 - Number Formatting for Accessibility
+**Learning:** Large numerical counts in log outputs and notifications are cognitively difficult to read without visual separation, leading to potential misinterpretation.
+**Action:** Always format large numerical values with thousands separators (e.g., using commas) to improve cognitive accessibility and overall UX readability.

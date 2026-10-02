@@ -242,6 +242,20 @@ function escapeHTML() {
     fi
 }
 
+# Function to format numerical values with thousands separators
+function formatNumber() {
+    local formatted="$1"
+    local __resultvar="$2"
+    while [[ $formatted =~ ^([0-9]+)([0-9]{3}) ]]; do
+        formatted="${BASH_REMATCH[1]},${BASH_REMATCH[2]}${formatted#${BASH_REMATCH[1]}${BASH_REMATCH[2]}}"
+    done
+    if [ -n "$__resultvar" ]; then
+        printf -v "$__resultvar" "%s" "$formatted"
+    else
+        echo "$formatted"
+    fi
+}
+
 # Function to convert file sizes to human-readable format
 function getFriendlyFileSize() {
     local size="$1"
@@ -395,11 +409,11 @@ function getOperationRestore () {
     getFriendlyFileSize 0 s_patched
 
     local safe_restored_files safe_deleted_files safe_patched_files safe_restored_folders safe_deleted_folders
-    escapeHTML "${RES_RestoredFiles:-0}" safe_restored_files
-    escapeHTML "${RES_DeletedFiles:-0}" safe_deleted_files
-    escapeHTML "${RES_PatchedFiles:-0}" safe_patched_files
-    escapeHTML "${RES_RestoredFolders:-0}" safe_restored_folders
-    escapeHTML "${RES_DeletedFolders:-0}" safe_deleted_folders
+    formatNumber "${RES_RestoredFiles:-0}" safe_restored_files
+    formatNumber "${RES_DeletedFiles:-0}" safe_deleted_files
+    formatNumber "${RES_PatchedFiles:-0}" safe_patched_files
+    formatNumber "${RES_RestoredFolders:-0}" safe_restored_folders
+    formatNumber "${RES_DeletedFolders:-0}" safe_deleted_folders
 
     local output
     printf -v output "\n📂 <b>FILES:</b>         count       size\n📥 <b>Restored:</b>     %7s %10s\n🗑️ <b>Deleted:</b>      %7s %10s\n🛠️ <b>Patched:</b>      %7s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>       count       size\n📂 <b>Restored:</b>     %7s %10s\n🗑️ <b>Deleted:</b>      %7s %10s" \
@@ -433,14 +447,14 @@ function getOperationBackup () {
 
     local safe_added_files safe_deleted_files safe_modified_files safe_opened_files safe_examined_files
     local safe_added_folders safe_deleted_folders safe_modified_folders
-    escapeHTML "${RES_AddedFiles:-0}" safe_added_files
-    escapeHTML "${RES_DeletedFiles:-0}" safe_deleted_files
-    escapeHTML "${RES_ModifiedFiles:-0}" safe_modified_files
-    escapeHTML "${RES_OpenedFiles:-0}" safe_opened_files
-    escapeHTML "${RES_ExaminedFiles:-0}" safe_examined_files
-    escapeHTML "${RES_AddedFolders:-0}" safe_added_folders
-    escapeHTML "${RES_DeletedFolders:-0}" safe_deleted_folders
-    escapeHTML "${RES_ModifiedFolders:-0}" safe_modified_folders
+    formatNumber "${RES_AddedFiles:-0}" safe_added_files
+    formatNumber "${RES_DeletedFiles:-0}" safe_deleted_files
+    formatNumber "${RES_ModifiedFiles:-0}" safe_modified_files
+    formatNumber "${RES_OpenedFiles:-0}" safe_opened_files
+    formatNumber "${RES_ExaminedFiles:-0}" safe_examined_files
+    formatNumber "${RES_AddedFolders:-0}" safe_added_folders
+    formatNumber "${RES_DeletedFolders:-0}" safe_deleted_folders
+    formatNumber "${RES_ModifiedFolders:-0}" safe_modified_folders
 
     local output
     printf -v output "\n📂 <b>FILES:</b>         count       size\n➕ <b>Added:</b>        %7s %10s\n➖ <b>Deleted:</b>      %7s %10s\n🔧 <b>Changed:</b>      %7s %10s\n🔍 <b>Opened:</b>       %7s %10s\n🔎 <b>Examined:</b>     %7s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>       count       size\n➕ <b>Added:</b>        %7s %10s\n➖ <b>Deleted:</b>      %7s %10s\n🔧 <b>Changed:</b>      %7s %10s" \
