@@ -147,7 +147,7 @@ auto_update() {
         if [[ "$headers" =~ [Ll]ocation:[[:space:]]*.*/tag/([^[:space:]$'\r\n']+) ]]; then
             latest_tag="${BASH_REMATCH[1]}"
             # 🛡️ Sentinel Security Fix: Prevent Path Traversal in GitHub URL redirect
-            if [[ "$latest_tag" == *"../"* || "$latest_tag" == *"/"* ]]; then return; fi
+            if [[ "$latest_tag" == *[!a-zA-Z0-9.-]* ]]; then return; fi
         fi
 
         if [ -n "$latest_tag" ]; then
@@ -156,9 +156,13 @@ auto_update() {
             # Remember which source we used so the download matches (must not be cached wrongly)
             DOWNLOAD_REF="$latest_tag"
         else
-            latest_version=$(curl -s --compressed --connect-timeout 5 --max-time 5 --proto '=https' "$GITHUB_RAW_BASE/version.txt" 2>/dev/null)
+            latest_version=$(curl -sf --compressed --connect-timeout 5 --max-time 5 --proto '=https' "$GITHUB_RAW_BASE/version.txt" 2>/dev/null)
             latest_version="${latest_version//$'\r'/}"
             latest_version="${latest_version//$'\n'/}"
+            # 🛡️ Sentinel Security Fix: Validate downloaded version to prevent cache poisoning/path traversal
+            if [[ "$latest_version" == *[!a-zA-Z0-9.-]* ]]; then
+                latest_version=""
+            fi
             [ -n "$latest_version" ] && DOWNLOAD_REF="main"
         fi
         if [ -n "$latest_version" ]; then
@@ -196,7 +200,7 @@ auto_update() {
             dl_url="$GITHUB_RAW_BASE/notify_to_telegram.sh"
         fi
 
-        if curl -s --compressed --connect-timeout 5 --max-time 10 --proto '=https' -o "$tmp_script" "$dl_url" 2>/dev/null && [ -s "$tmp_script" ]; then
+        if curl -sf --compressed --connect-timeout 5 --max-time 10 --proto '=https' -o "$tmp_script" "$dl_url" 2>/dev/null && [ -s "$tmp_script" ]; then
             IFS= read -r first_line < "$tmp_script"
             if [[ "$first_line" != "#!/bin/bash"* ]]; then
                 rm -f "$tmp_script"
