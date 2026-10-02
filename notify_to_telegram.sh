@@ -55,7 +55,7 @@ SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
 SCRIPT_FILE="${BASH_SOURCE[0]##*/}"
 SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_FILE"
 
-SCRIPT_VERSION="1.13.0"
+SCRIPT_VERSION="1.14.0"
 GITHUB_OWNER="spupuz"
 GITHUB_REPO="duplicati-telegram-notifications"
 GITHUB_RAW_BASE="https://raw.githubusercontent.com/$GITHUB_OWNER/$GITHUB_REPO/main"
@@ -147,7 +147,7 @@ auto_update() {
         if [[ "$headers" =~ [Ll]ocation:[[:space:]]*.*/tag/([^[:space:]$'\r\n']+) ]]; then
             latest_tag="${BASH_REMATCH[1]}"
             # 🛡️ Sentinel Security Fix: Prevent Path Traversal in GitHub URL redirect
-            if [[ "$latest_tag" == *"../"* || "$latest_tag" == *"/"* ]]; then return; fi
+            if [[ "$latest_tag" == *[!a-zA-Z0-9.-]* ]]; then return; fi
         fi
 
         if [ -n "$latest_tag" ]; then
@@ -156,9 +156,13 @@ auto_update() {
             # Remember which source we used so the download matches (must not be cached wrongly)
             DOWNLOAD_REF="$latest_tag"
         else
-            latest_version=$(curl -s --compressed --connect-timeout 5 --max-time 5 --proto '=https' "$GITHUB_RAW_BASE/version.txt" 2>/dev/null)
+            latest_version=$(curl -sf --compressed --connect-timeout 5 --max-time 5 --proto '=https' "$GITHUB_RAW_BASE/version.txt" 2>/dev/null)
             latest_version="${latest_version//$'\r'/}"
             latest_version="${latest_version//$'\n'/}"
+            # 🛡️ Sentinel Security Fix: Validate downloaded version to prevent cache poisoning/path traversal
+            if [[ "$latest_version" == *[!a-zA-Z0-9.-]* ]]; then
+                latest_version=""
+            fi
             [ -n "$latest_version" ] && DOWNLOAD_REF="main"
         fi
         if [ -n "$latest_version" ]; then
@@ -196,7 +200,7 @@ auto_update() {
             dl_url="$GITHUB_RAW_BASE/notify_to_telegram.sh"
         fi
 
-        if curl -s --compressed --connect-timeout 5 --max-time 10 --proto '=https' -o "$tmp_script" "$dl_url" 2>/dev/null && [ -s "$tmp_script" ]; then
+        if curl -sf --compressed --connect-timeout 5 --max-time 10 --proto '=https' -o "$tmp_script" "$dl_url" 2>/dev/null && [ -s "$tmp_script" ]; then
             IFS= read -r first_line < "$tmp_script"
             if [[ "$first_line" != "#!/bin/bash"* ]]; then
                 rm -f "$tmp_script"
@@ -239,6 +243,25 @@ function escapeHTML() {
         printf -v "$__resultvar" "%s" "$val"
     else
         echo "$val"
+    fi
+}
+
+# Function to format numerical values with thousands separators
+# 🛡️ Sentinel: this function replaces escapeHTML for the numeric count columns, so it must
+# guarantee the output is inert on its own. Non-digit characters are stripped, which means the
+# result can only ever contain digits and commas - never raw <, > or & from the environment.
+function formatNumber() {
+    local formatted="$1"
+    local __resultvar="$2"
+    formatted="${formatted//[!0-9]/}"
+    [ -z "$formatted" ] && formatted=0
+    while [[ $formatted =~ ^([0-9]+)([0-9]{3}) ]]; do
+        formatted="${BASH_REMATCH[1]},${BASH_REMATCH[2]}${formatted#${BASH_REMATCH[1]}${BASH_REMATCH[2]}}"
+    done
+    if [ -n "$__resultvar" ]; then
+        printf -v "$__resultvar" "%s" "$formatted"
+    else
+        echo "$formatted"
     fi
 }
 
@@ -395,14 +418,14 @@ function getOperationRestore () {
     getFriendlyFileSize 0 s_patched
 
     local safe_restored_files safe_deleted_files safe_patched_files safe_restored_folders safe_deleted_folders
-    escapeHTML "${RES_RestoredFiles:-0}" safe_restored_files
-    escapeHTML "${RES_DeletedFiles:-0}" safe_deleted_files
-    escapeHTML "${RES_PatchedFiles:-0}" safe_patched_files
-    escapeHTML "${RES_RestoredFolders:-0}" safe_restored_folders
-    escapeHTML "${RES_DeletedFolders:-0}" safe_deleted_folders
+    formatNumber "${RES_RestoredFiles:-0}" safe_restored_files
+    formatNumber "${RES_DeletedFiles:-0}" safe_deleted_files
+    formatNumber "${RES_PatchedFiles:-0}" safe_patched_files
+    formatNumber "${RES_RestoredFolders:-0}" safe_restored_folders
+    formatNumber "${RES_DeletedFolders:-0}" safe_deleted_folders
 
     local output
-    printf -v output "\n📂 <b>FILES:</b>         count       size\n📥 <b>Restored:</b>     %7s %10s\n🗑️ <b>Deleted:</b>      %7s %10s\n🛠️ <b>Patched:</b>      %7s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>       count       size\n📂 <b>Restored:</b>     %7s %10s\n🗑️ <b>Deleted:</b>      %7s %10s" \
+    printf -v output "\n📂 <b>FILES:</b>         count       size\n📥 <b>Restored:</b>     %9s %10s\n🗑️ <b>Deleted:</b>      %9s %10s\n🛠️ <b>Patched:</b>      %9s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>       count       size\n📂 <b>Restored:</b>     %9s %10s\n🗑️ <b>Deleted:</b>      %9s %10s" \
         "$safe_restored_files" "$s_restored" "$safe_deleted_files" "$s_deleted" "$safe_patched_files" "$s_patched" \
         "$safe_restored_folders" "$s_deleted" "$safe_deleted_folders" "$s_deleted"
 
@@ -433,17 +456,17 @@ function getOperationBackup () {
 
     local safe_added_files safe_deleted_files safe_modified_files safe_opened_files safe_examined_files
     local safe_added_folders safe_deleted_folders safe_modified_folders
-    escapeHTML "${RES_AddedFiles:-0}" safe_added_files
-    escapeHTML "${RES_DeletedFiles:-0}" safe_deleted_files
-    escapeHTML "${RES_ModifiedFiles:-0}" safe_modified_files
-    escapeHTML "${RES_OpenedFiles:-0}" safe_opened_files
-    escapeHTML "${RES_ExaminedFiles:-0}" safe_examined_files
-    escapeHTML "${RES_AddedFolders:-0}" safe_added_folders
-    escapeHTML "${RES_DeletedFolders:-0}" safe_deleted_folders
-    escapeHTML "${RES_ModifiedFolders:-0}" safe_modified_folders
+    formatNumber "${RES_AddedFiles:-0}" safe_added_files
+    formatNumber "${RES_DeletedFiles:-0}" safe_deleted_files
+    formatNumber "${RES_ModifiedFiles:-0}" safe_modified_files
+    formatNumber "${RES_OpenedFiles:-0}" safe_opened_files
+    formatNumber "${RES_ExaminedFiles:-0}" safe_examined_files
+    formatNumber "${RES_AddedFolders:-0}" safe_added_folders
+    formatNumber "${RES_DeletedFolders:-0}" safe_deleted_folders
+    formatNumber "${RES_ModifiedFolders:-0}" safe_modified_folders
 
     local output
-    printf -v output "\n📂 <b>FILES:</b>         count       size\n➕ <b>Added:</b>        %7s %10s\n➖ <b>Deleted:</b>      %7s %10s\n🔧 <b>Changed:</b>      %7s %10s\n🔍 <b>Opened:</b>       %7s %10s\n🔎 <b>Examined:</b>     %7s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>       count       size\n➕ <b>Added:</b>        %7s %10s\n➖ <b>Deleted:</b>      %7s %10s\n🔧 <b>Changed:</b>      %7s %10s" \
+    printf -v output "\n📂 <b>FILES:</b>         count       size\n➕ <b>Added:</b>        %9s %10s\n➖ <b>Deleted:</b>      %9s %10s\n🔧 <b>Changed:</b>      %9s %10s\n🔍 <b>Opened:</b>       %9s %10s\n🔎 <b>Examined:</b>     %9s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>       count       size\n➕ <b>Added:</b>        %9s %10s\n➖ <b>Deleted:</b>      %9s %10s\n🔧 <b>Changed:</b>      %9s %10s" \
         "$safe_added_files" "$s_add" "$safe_deleted_files" "$s_del" "$safe_modified_files" "$s_mod" \
         "$safe_opened_files" "$s_opn" "$safe_examined_files" "$s_exm" "$safe_added_folders" "$s_fadd" \
         "$safe_deleted_folders" "$s_fdel" "$safe_modified_folders" "$s_fmod"
