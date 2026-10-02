@@ -55,7 +55,7 @@ SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
 SCRIPT_FILE="${BASH_SOURCE[0]##*/}"
 SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_FILE"
 
-SCRIPT_VERSION="1.13.0"
+SCRIPT_VERSION="1.14.0"
 GITHUB_OWNER="spupuz"
 GITHUB_REPO="duplicati-telegram-notifications"
 GITHUB_RAW_BASE="https://raw.githubusercontent.com/$GITHUB_OWNER/$GITHUB_REPO/main"
@@ -243,9 +243,14 @@ function escapeHTML() {
 }
 
 # Function to format numerical values with thousands separators
+# 🛡️ Sentinel: this function replaces escapeHTML for the numeric count columns, so it must
+# guarantee the output is inert on its own. Non-digit characters are stripped, which means the
+# result can only ever contain digits and commas - never raw <, > or & from the environment.
 function formatNumber() {
     local formatted="$1"
     local __resultvar="$2"
+    formatted="${formatted//[!0-9]/}"
+    [ -z "$formatted" ] && formatted=0
     while [[ $formatted =~ ^([0-9]+)([0-9]{3}) ]]; do
         formatted="${BASH_REMATCH[1]},${BASH_REMATCH[2]}${formatted#${BASH_REMATCH[1]}${BASH_REMATCH[2]}}"
     done
@@ -416,7 +421,7 @@ function getOperationRestore () {
     formatNumber "${RES_DeletedFolders:-0}" safe_deleted_folders
 
     local output
-    printf -v output "\n📂 <b>FILES:</b>         count       size\n📥 <b>Restored:</b>     %7s %10s\n🗑️ <b>Deleted:</b>      %7s %10s\n🛠️ <b>Patched:</b>      %7s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>       count       size\n📂 <b>Restored:</b>     %7s %10s\n🗑️ <b>Deleted:</b>      %7s %10s" \
+    printf -v output "\n📂 <b>FILES:</b>         count       size\n📥 <b>Restored:</b>     %9s %10s\n🗑️ <b>Deleted:</b>      %9s %10s\n🛠️ <b>Patched:</b>      %9s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>       count       size\n📂 <b>Restored:</b>     %9s %10s\n🗑️ <b>Deleted:</b>      %9s %10s" \
         "$safe_restored_files" "$s_restored" "$safe_deleted_files" "$s_deleted" "$safe_patched_files" "$s_patched" \
         "$safe_restored_folders" "$s_deleted" "$safe_deleted_folders" "$s_deleted"
 
@@ -457,7 +462,7 @@ function getOperationBackup () {
     formatNumber "${RES_ModifiedFolders:-0}" safe_modified_folders
 
     local output
-    printf -v output "\n📂 <b>FILES:</b>         count       size\n➕ <b>Added:</b>        %7s %10s\n➖ <b>Deleted:</b>      %7s %10s\n🔧 <b>Changed:</b>      %7s %10s\n🔍 <b>Opened:</b>       %7s %10s\n🔎 <b>Examined:</b>     %7s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>       count       size\n➕ <b>Added:</b>        %7s %10s\n➖ <b>Deleted:</b>      %7s %10s\n🔧 <b>Changed:</b>      %7s %10s" \
+    printf -v output "\n📂 <b>FILES:</b>         count       size\n➕ <b>Added:</b>        %9s %10s\n➖ <b>Deleted:</b>      %9s %10s\n🔧 <b>Changed:</b>      %9s %10s\n🔍 <b>Opened:</b>       %9s %10s\n🔎 <b>Examined:</b>     %9s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>       count       size\n➕ <b>Added:</b>        %9s %10s\n➖ <b>Deleted:</b>      %9s %10s\n🔧 <b>Changed:</b>      %9s %10s" \
         "$safe_added_files" "$s_add" "$safe_deleted_files" "$s_del" "$safe_modified_files" "$s_mod" \
         "$safe_opened_files" "$s_opn" "$safe_examined_files" "$s_exm" "$safe_added_folders" "$s_fadd" \
         "$safe_deleted_folders" "$s_fdel" "$safe_modified_folders" "$s_fmod"
