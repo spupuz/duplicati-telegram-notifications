@@ -345,7 +345,7 @@ function getResultLine () {
         Warning) RESULT_ICON="⚠️" ;;
         Error)   RESULT_ICON="❌" ;;
         Fatal)   RESULT_ICON="💥" ;;
-        *)       escapeHTML "$DUPLICATI__PARSED_RESULT" RESULT_ICON ;;
+        *)       RESULT_ICON="❓" ;;
     esac
 
     local safe_backup_name safe_op_name safe_status safe_result safe_duration
