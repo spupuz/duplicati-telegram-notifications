@@ -109,7 +109,7 @@ if [[ ! "$TELEGRAM_CHATID" =~ ^-?[0-9]+$ ]] && [[ ! "$TELEGRAM_CHATID" =~ ^@[a-z
 fi
 
 # 🛡️ Sentinel Security Fix: Un-export sensitive credentials to prevent leakage to child processes
-export -n TELEGRAM_TOKEN TELEGRAM_CHATID
+export -n TELEGRAM_TOKEN TELEGRAM_CHATID TELEGRAM_URL
 
 TELEGRAM_URL="https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage"
 
