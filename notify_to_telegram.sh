@@ -255,13 +255,18 @@ function formatNumber() {
     local __resultvar="$2"
     formatted="${formatted//[!0-9]/}"
     [ -z "$formatted" ] && formatted=0
-    while [[ $formatted =~ ^([0-9]+)([0-9]{3}) ]]; do
-        formatted="${BASH_REMATCH[1]},${BASH_REMATCH[2]}${formatted#${BASH_REMATCH[1]}${BASH_REMATCH[2]}}"
+    # ⚡ Bolt Optimization: Use pure bash string slicing instead of expensive regex loop to format thousands separator.
+    local len=${#formatted}
+    local out=""
+    while (( len > 3 )); do
+        out=",${formatted:len-3:3}${out}"
+        ((len -= 3))
     done
+    out="${formatted:0:len}${out}"
     if [ -n "$__resultvar" ]; then
-        printf -v "$__resultvar" "%s" "$formatted"
+        printf -v "$__resultvar" "%s" "$out"
     else
-        echo "$formatted"
+        echo "$out"
     fi
 }
 
