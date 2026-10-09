@@ -88,6 +88,9 @@ SKIP_UPDATE=1
 
 ## 📦 Changelog
 
+### v1.15.5
+- **Ignore local agent skills**: add `.agents/` to `.gitignore` (same as `.opencode/` and `.kilo/`). Local `SKILL.md` files stay untracked; no code or version-logic changes.
+
 ### v1.2.0
 - **Auto-update now checks GitHub releases**: the script prefers the official latest GitHub release (tagged `vX.Y.Z`) via the API, falling back to `version.txt` on the `main` branch if the API is unavailable. The script is downloaded from the corresponding release tag.
 - Fixed a version-sync bug where `SCRIPT_VERSION` in the script was left stale, silently breaking self-update (the downloaded file was identical so it was never replaced).

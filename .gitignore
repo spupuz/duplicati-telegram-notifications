@@ -1,5 +1,6 @@
 # Exclude real Telegram credentials
 telegram_config.env
+.agents/
 .jules/
 .kilo/
 .opencode/
