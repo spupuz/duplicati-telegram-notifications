@@ -327,6 +327,7 @@ function parseResultFile () {
         val="${val%$'\r'}"
         # 🛡️ Sentinel Security Fix: Truncate excessively long parsed values to prevent DoS via Telegram API length limits
         val="${val:0:1500}"
+        export -n "RES_$key"
         printf -v "RES_$key" "%s" "$val"
     # ⚡ Bolt Optimization: Use strict regex to exclude unrelated lines (e.g. timestamps with hyphens) before bash loop
     # 🛡️ Sentinel Security Fix: Use -- to prevent argument injection if the filename starts with a hyphen (e.g. -r)
@@ -566,6 +567,7 @@ fi
 # 🛡️ Sentinel Security Fix: Prevent Information Disclosure (CWE-200) in system process lists
 # by passing sensitive API configurations via process substitution (-K) instead of command-line
 # arguments, and piping the message payload via standard input.
+export -n MESSAGE
 printf "%s" "$MESSAGE" | curl -s --connect-timeout 10 --max-time 30 --proto '=https' -K <(cat <<EOF
 url="$TELEGRAM_URL"
 data-urlencode="chat_id=$TELEGRAM_CHATID"
