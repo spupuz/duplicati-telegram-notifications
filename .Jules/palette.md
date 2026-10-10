@@ -1,0 +1,3 @@
+## 2024-05-24 - Explicit Empty States for Dynamic Telegram Tags
+**Learning:** Omitting dynamic metadata (like missing operations or empty parsed results) without a fallback in structured data fields (like Telegram tags) causes variable output length and structural layout collapse. This inconsistency confuses screen readers and degrades cognitive accessibility, as users expect a predictable tag structure for filtering and context.
+**Action:** Always use bash parameter expansion (e.g., `${VAR:-UnknownState}`) to provide explicit, predictable empty state placeholders for dynamically generated tags or metadata, ensuring the visual and structural layout remains consistent even when data is missing.

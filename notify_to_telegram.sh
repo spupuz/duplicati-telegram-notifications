@@ -543,8 +543,10 @@ MESSAGE+="
 </pre>"
 
 # 🎨 Palette UX Enhancement: Add clickable tags for easy filtering in Telegram
-clean_op="${DUPLICATI__OPERATIONNAME//[^a-zA-Z0-9_]/}"
-clean_result="${DUPLICATI__PARSED_RESULT//[^a-zA-Z0-9_]/}"
+clean_op="${DUPLICATI__OPERATIONNAME:-UnknownOperation}"
+clean_op="${clean_op//[^a-zA-Z0-9_]/}"
+clean_result="${DUPLICATI__PARSED_RESULT:-UnknownResult}"
+clean_result="${clean_result//[^a-zA-Z0-9_]/}"
 tags="#Duplicati"
 [ -n "$clean_op" ] && tags+=" #${clean_op}"
 [ -n "$clean_result" ] && tags+=" #${clean_result}"
