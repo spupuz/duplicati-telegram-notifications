@@ -66,6 +66,8 @@ CONFIG_FILE="${SCRIPT_DIR}/telegram_config.env"
 if [ -f "$CONFIG_FILE" ]; then
     # 🛡️ Sentinel Security Fix: Enforce strict permissions on the config file to prevent Information Disclosure
     chmod 600 "$CONFIG_FILE" 2>/dev/null || true
+    # 🛡️ Sentinel Security Fix: Un-export loop iterators to prevent Information Disclosure to child processes
+    export -n key val
     while IFS='=' read -r key val || [ -n "$key" ]; do
         # Trim whitespace from key
         key="${key#"${key%%[![:space:]]*}"}"
@@ -313,6 +315,8 @@ function getFriendlyFileSize() {
 # Securely parse the result file to avoid command injection
 function parseResultFile () {
     [ -f "$DUPLICATI__RESULTFILE" ] || return
+    # 🛡️ Sentinel Security Fix: Un-export loop iterators to prevent Information Disclosure to child processes
+    export -n key val
     # ⚡ Bolt Optimization: Use process substitution with grep to instantly strip unparseable lines
     # before they reach the slow Bash read loop. This prevents significant CPU overhead when parsing
     # large backup log files filled with generic, non-colon-separated output.
