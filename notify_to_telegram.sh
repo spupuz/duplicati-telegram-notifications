@@ -67,8 +67,9 @@ if [ -f "$CONFIG_FILE" ]; then
     # 🛡️ Sentinel Security Fix: Enforce strict permissions on the config file to prevent Information Disclosure
     chmod 600 "$CONFIG_FILE" 2>/dev/null || true
 
-    # 🛡️ Sentinel Security Fix: Un-export loop iterator variables to prevent inherited export
-    # attributes from leaking parsed config values to child processes via /proc/<pid>/environ.
+    # 🛡️ Sentinel Security Fix: Prevent Information Disclosure (CWE-200) via /proc/<pid>/environ in child processes.
+    # Explicitly un-export iterator variables 'key' and 'val' so they do not inherit the export attribute
+    # from the parent environment, ensuring sensitive config parts do not leak into child processes.
     export -n key val
     while IFS='=' read -r key val || [ -n "$key" ]; do
         # Trim whitespace from key
@@ -320,8 +321,9 @@ function parseResultFile () {
     # ⚡ Bolt Optimization: Use process substitution with grep to instantly strip unparseable lines
     # before they reach the slow Bash read loop. This prevents significant CPU overhead when parsing
     # large backup log files filled with generic, non-colon-separated output.
-    # 🛡️ Sentinel Security Fix: Un-export loop iterator variables to prevent inherited export
-    # attributes from leaking parsed config values to child processes via /proc/<pid>/environ.
+    # 🛡️ Sentinel Security Fix: Prevent Information Disclosure (CWE-200) via /proc/<pid>/environ in child processes.
+    # Explicitly un-export iterator variables 'key' and 'val' before reading the result file to guarantee
+    # they don't leak into spawned processes if they inherited the export attribute from the environment.
     export -n key val
     while IFS=':' read -r key val || [ -n "$key" ]; do
         [[ -z "$val" ]] && continue
