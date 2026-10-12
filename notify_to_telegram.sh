@@ -66,7 +66,6 @@ CONFIG_FILE="${SCRIPT_DIR}/telegram_config.env"
 if [ -f "$CONFIG_FILE" ]; then
     # 🛡️ Sentinel Security Fix: Enforce strict permissions on the config file to prevent Information Disclosure
     chmod 600 "$CONFIG_FILE" 2>/dev/null || true
-<<<<<<< HEAD
 
     # 🛡️ Sentinel Security Fix: Prevent Information Disclosure (CWE-200) via /proc/<pid>/environ in child processes.
     # Explicitly un-export iterator variables 'key' and 'val' so they do not inherit the export attribute
