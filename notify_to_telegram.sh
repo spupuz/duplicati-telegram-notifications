@@ -66,6 +66,10 @@ CONFIG_FILE="${SCRIPT_DIR}/telegram_config.env"
 if [ -f "$CONFIG_FILE" ]; then
     # 🛡️ Sentinel Security Fix: Enforce strict permissions on the config file to prevent Information Disclosure
     chmod 600 "$CONFIG_FILE" 2>/dev/null || true
+
+    # 🛡️ Sentinel Security Fix: Un-export loop iterator variables to prevent inherited export
+    # attributes from leaking parsed config values to child processes via /proc/<pid>/environ.
+    export -n key val
     while IFS='=' read -r key val || [ -n "$key" ]; do
         # Trim whitespace from key
         key="${key#"${key%%[![:space:]]*}"}"
@@ -316,6 +320,9 @@ function parseResultFile () {
     # ⚡ Bolt Optimization: Use process substitution with grep to instantly strip unparseable lines
     # before they reach the slow Bash read loop. This prevents significant CPU overhead when parsing
     # large backup log files filled with generic, non-colon-separated output.
+    # 🛡️ Sentinel Security Fix: Un-export loop iterator variables to prevent inherited export
+    # attributes from leaking parsed config values to child processes via /proc/<pid>/environ.
+    export -n key val
     while IFS=':' read -r key val || [ -n "$key" ]; do
         [[ -z "$val" ]] && continue
         key="${key//[[:space:]]/}"
