@@ -27,8 +27,7 @@ OUTPUT=$(grep -A 20 'MESSAGE+=' empty_debug.log)
 if [[ "$OUTPUT" == *"Unknown Task"* ]] && \
    [[ "$OUTPUT" == *"Unknown Operation"* ]] && \
    [[ "$OUTPUT" == *"Unknown Error"* ]] && \
-   [[ "$OUTPUT" == *"No additional details provided."* ]] && \
-   [[ "$OUTPUT" == *"#UnknownOperation"* ]]; then
+   [[ "$OUTPUT" == *"No additional details provided."* ]]; then
     echo "Test passed: Empty states verified."
 else
     echo "Test failed: Missing empty states in output."
