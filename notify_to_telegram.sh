@@ -578,7 +578,8 @@ fi
 # 🛡️ Sentinel Security Fix: Prevent Information Disclosure (CWE-200) in system process lists
 # by passing sensitive API configurations via process substitution (-K) instead of command-line
 # arguments, and piping the message payload via standard input.
-export -n MESSAGE
+# 🛡️ Sentinel Security Fix: Un-export dynamically derived internal variables to prevent leakage to child processes.
+export -n MESSAGE Duration TEMP_MSG CURRENT_STATUS safe_backup_name safe_op_name safe_status header_icon clean_op clean_result tags safe_updated_version safe_script_version
 printf "%s" "$MESSAGE" | curl -s --connect-timeout 10 --max-time 30 --proto '=https' -K <(cat <<EOF
 url="$TELEGRAM_URL"
 data-urlencode="chat_id=$TELEGRAM_CHATID"
