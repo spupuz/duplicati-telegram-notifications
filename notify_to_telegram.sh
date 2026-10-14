@@ -30,6 +30,7 @@ if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
 # This ensures that even if secrets like passwords or API keys are inherited as exported variables
 # from the parent environment (e.g. Docker ENV), they are strictly confined to this script's
 # internal shell environment and not leaked to spawned processes like curl or grep via /proc/<pid>/environ.
+export -n var
 for var in "${!DUPLICATI__@}"; do
     export -n "$var"
 done
@@ -219,6 +220,7 @@ auto_update() {
                 # 🔧 Re-export the credentials and variables for the self-reexec only: they were stripped from the
                 # environment above, but ENV-configured installs (Docker) have no config file to reload.
                 export TELEGRAM_TOKEN TELEGRAM_CHATID
+                export -n var
                 for var in "${!DUPLICATI__@}"; do
                     export "$var"
                 done
