@@ -150,7 +150,8 @@ auto_update() {
         # the entire JSON API payload. Then, parse the Location header using native Bash regex.
         # This saves bandwidth and eliminates fork/exec overhead from external binaries like sed/head.
         local headers
-        headers=$(curl -sI --connect-timeout 5 --max-time 5 --proto '=https' "$GITHUB_RELEASE_LATEST" 2>/dev/null)
+        # 🛡️ Sentinel Security Fix: Always include the -f (--fail) flag when downloading external version strings to fail securely
+        headers=$(curl -sfI --connect-timeout 5 --max-time 5 --proto '=https' "$GITHUB_RELEASE_LATEST" 2>/dev/null)
         if [[ "$headers" =~ [Ll]ocation:[[:space:]]*.*/tag/([^[:space:]$'\r\n']+) ]]; then
             latest_tag="${BASH_REMATCH[1]}"
             # 🛡️ Sentinel Security Fix: Prevent Path Traversal in GitHub URL redirect
