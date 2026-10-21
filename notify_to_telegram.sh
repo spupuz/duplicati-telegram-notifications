@@ -348,7 +348,9 @@ function parseResultFile () {
         printf -v "RES_$key" "%s" "$val"
     # ⚡ Bolt Optimization: Use strict regex to exclude unrelated lines (e.g. timestamps with hyphens) before bash loop
     # 🛡️ Sentinel Security Fix: Use -- to prevent argument injection if the filename starts with a hyphen (e.g. -r)
-    done < <(grep '^[[:space:]]*[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]*:' -- "$DUPLICATI__RESULTFILE")
+    # ⚡ Bolt Optimization: Enforce the C locale using LC_ALL=C for the grep operation. Bypassing complex
+    # multi-byte UTF-8 character evaluation allows GNU grep to process massive log files significantly faster.
+    done < <(LC_ALL=C grep '^[[:space:]]*[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]*:' -- "$DUPLICATI__RESULTFILE")
 }
 
 # Function to generate the result line with appropriate icon
