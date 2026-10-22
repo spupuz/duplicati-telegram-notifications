@@ -324,6 +324,11 @@ function getFriendlyFileSize() {
 # Securely parse the result file to avoid command injection
 function parseResultFile () {
     [ -f "$DUPLICATI__RESULTFILE" ] || return
+    # 🛡️ Sentinel Security Fix: Explicitly unset any pre-existing variables matching the RES_ prefix
+    # before parsing. This prevents inherited environment variables from manipulating the script logic
+    # if the external backup log omits those keys.
+    local var
+    for var in "${!RES_@}"; do unset "$var"; done
     # 🛡️ Sentinel Security Fix: Un-export loop iterators to prevent Information Disclosure to child processes
     export -n key val
     # ⚡ Bolt Optimization: Use process substitution with grep to instantly strip unparseable lines
