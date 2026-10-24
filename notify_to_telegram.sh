@@ -330,7 +330,7 @@ function parseResultFile () {
     local var
     for var in "${!RES_@}"; do unset "$var"; done
     # 🛡️ Sentinel Security Fix: Un-export loop iterators to prevent Information Disclosure to child processes
-    export -n key val
+    local key val; export -n key val
     # ⚡ Bolt Optimization: Use process substitution with grep to instantly strip unparseable lines
     # before they reach the slow Bash read loop. This prevents significant CPU overhead when parsing
     # large backup log files filled with generic, non-colon-separated output.
