@@ -444,8 +444,9 @@ function getOperationRestore () {
     local __resultvar="$1"
     local s_restored s_deleted s_patched
     getFriendlyFileSize "$RES_SizeOfRestoredFiles" s_restored
-    getFriendlyFileSize 0 s_deleted
-    getFriendlyFileSize 0 s_patched
+    # ⚡ Bolt Optimization: Use direct assignment for static zero values to bypass function call overhead.
+    s_deleted="0 B"
+    s_patched="0 B"
 
     local safe_restored_files safe_deleted_files safe_patched_files safe_restored_folders safe_deleted_folders
     formatNumber "${RES_RestoredFiles:-0}" safe_restored_files
@@ -476,13 +477,15 @@ function getOperationBackup () {
     local __resultvar="$1"
     local s_add s_del s_mod s_opn s_exm s_fadd s_fdel s_fmod
     getFriendlyFileSize "$RES_SizeOfAddedFiles" s_add
-    getFriendlyFileSize 0 s_del
+    # ⚡ Bolt Optimization: Use direct assignment for static zero values to bypass function call overhead.
+    s_del="0 B"
     getFriendlyFileSize "$RES_SizeOfModifiedFiles" s_mod
     getFriendlyFileSize "$RES_SizeOfOpenedFiles" s_opn
     getFriendlyFileSize "$RES_SizeOfExaminedFiles" s_exm
-    getFriendlyFileSize 0 s_fadd
-    getFriendlyFileSize 0 s_fdel
-    getFriendlyFileSize 0 s_fmod
+    # ⚡ Bolt Optimization: Use direct assignment for static zero values to bypass function call overhead.
+    s_fadd="0 B"
+    s_fdel="0 B"
+    s_fmod="0 B"
 
     local safe_added_files safe_deleted_files safe_modified_files safe_opened_files safe_examined_files
     local safe_added_folders safe_deleted_folders safe_modified_folders
