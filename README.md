@@ -105,6 +105,12 @@ If this project has been useful to you, consider buying me a coffee to support i
 
 ---
 
+## 📄 License
+
+This project is open source and available under the **MIT License**. See the [LICENSE](LICENSE) file for the full text.
+
+---
+
 ## ⚖️ Disclaimer (AS IS)
 
 > [!WARNING]
