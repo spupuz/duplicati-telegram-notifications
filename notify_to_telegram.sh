@@ -244,12 +244,18 @@ fi
 
 # Function to escape HTML characters
 function escapeHTML() {
-    shopt -u patsub_replacement 2>/dev/null || true
     local val="$1"
     local __resultvar="$2"
-    val="${val//&/&amp;}"
-    val="${val//</&lt;}"
-    val="${val//>/&gt;}"
+
+    # ⚡ Bolt Optimization: Early return if string contains no HTML-sensitive characters
+    # to avoid the overhead of multiple pattern substitution passes and shopt calls.
+    if [[ "$val" == *[\<\>\&]* ]]; then
+        shopt -u patsub_replacement 2>/dev/null || true
+        val="${val//&/&amp;}"
+        val="${val//</&lt;}"
+        val="${val//>/&gt;}"
+    fi
+
     if [ -n "$__resultvar" ]; then
         printf -v "$__resultvar" "%s" "$val"
     else
