@@ -30,6 +30,7 @@ if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
 # This ensures that even if secrets like passwords or API keys are inherited as exported variables
 # from the parent environment (e.g. Docker ENV), they are strictly confined to this script's
 # internal shell environment and not leaked to spawned processes like curl or grep via /proc/<pid>/environ.
+export -n var
 for var in "${!DUPLICATI__@}"; do
     export -n "$var"
 done
@@ -221,7 +222,7 @@ auto_update() {
                 # environment above, but ENV-configured installs (Docker) have no config file to reload.
                 # 🛡️ Sentinel Security Fix: Explicitly re-export TELEGRAM_URL which was globally un-exported
                 export TELEGRAM_TOKEN TELEGRAM_CHATID TELEGRAM_URL
-                local var
+                local var; export -n var
                 for var in "${!DUPLICATI__@}"; do
                     export "$var"
                 done
@@ -330,7 +331,7 @@ function parseResultFile () {
     # 🛡️ Sentinel Security Fix: Explicitly unset any pre-existing variables matching the RES_ prefix
     # before parsing. This prevents inherited environment variables from manipulating the script logic
     # if the external backup log omits those keys.
-    local var
+    local var; export -n var
     for var in "${!RES_@}"; do unset "$var"; done
     # 🛡️ Sentinel Security Fix: Un-export loop iterators to prevent Information Disclosure to child processes
     local key val; export -n key val

@@ -1,0 +1,609 @@
+#!/bin/bash
+
+#########################################################################
+# Enhanced Script for Telegram Notifications about Duplicati Backup Results
+# Released "AS IS" without any warranty of any kind.
+#########################################################################
+
+# Duplicati can run scripts before and after backups. This
+# functionality is available in the advanced options of any backup job (UI) or
+# as option (CLI). The (advanced) options to run scripts are
+# --run-script-before = your/path/notify_to_telegram.sh
+# --run-script-after = your/path/notify_to_telegram.sh
+
+# To work, you need to set two required variables:
+#  TELEGRAM_TOKEN
+#  TELEGRAM_CHATID
+# These variables must be configured in 'telegram_config.env' located
+# in the same directory as the script, or set as environment variables.
+#
+# DISCLAIMER (AS IS):
+# This script is provided "as is", without warranty of any kind, express or
+# implied. In no event shall the authors or copyright holders be liable for
+# any claim, damages, data loss or other liability arising from its use.
+#########################################################################
+
+# Skip immediately if operation is List to avoid unnecessary loading and network requests
+if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
+
+# 🛡️ Sentinel Security Fix: Un-export all inherited DUPLICATI__* variables to prevent secret leakage to child processes.
+# This ensures that even if secrets like passwords or API keys are inherited as exported variables
+# from the parent environment (e.g. Docker ENV), they are strictly confined to this script's
+# internal shell environment and not leaked to spawned processes like curl or grep via /proc/<pid>/environ.
+for var in "${!DUPLICATI__@}"; do
+    export -n "$var"
+done
+
+# 🛡️ Sentinel Security Fix: Truncate excessively long environment variables to prevent DoS via Telegram API length limits
+DUPLICATI__backup_name="${DUPLICATI__backup_name:0:1500}"
+DUPLICATI__OPERATIONNAME="${DUPLICATI__OPERATIONNAME:0:1500}"
+DUPLICATI__EVENTNAME="${DUPLICATI__EVENTNAME:0:1500}"
+DUPLICATI__PARSED_RESULT="${DUPLICATI__PARSED_RESULT:0:1500}"
+
+# ⚡ Bolt Optimization: Early exit if curl is missing to avoid environment loading, parsing, and execution overhead
+if ! command -v curl >/dev/null 2>&1; then
+    echo "Error: curl is required but not installed." >&2
+    exit 0
+fi
+
+# 1. Locate the script directory to load the relative configuration file
+# ⚡ Bolt Optimization: Use native Bash parameter expansion instead of $(dirname) and $(basename)
+# subshells to eliminate fork/exec overhead when locating the script.
+SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
+[[ "$SCRIPT_DIR" == "${BASH_SOURCE[0]}" ]] && SCRIPT_DIR="."
+SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
+SCRIPT_FILE="${BASH_SOURCE[0]##*/}"
+SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_FILE"
+
+SCRIPT_VERSION="1.15.21"
+GITHUB_OWNER="spupuz"
+GITHUB_REPO="duplicati-telegram-notifications"
+GITHUB_RAW_BASE="https://raw.githubusercontent.com/$GITHUB_OWNER/$GITHUB_REPO/main"
+GITHUB_RELEASE_LATEST="https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
+CONFIG_FILE="${SCRIPT_DIR}/telegram_config.env"
+
+# 2. Load variables securely from config file if it exists, preventing command injection
+if [ -f "$CONFIG_FILE" ]; then
+    # 🛡️ Sentinel Security Fix: Enforce strict permissions on the config file to prevent Information Disclosure
+    chmod 600 "$CONFIG_FILE" 2>/dev/null || true
+
+    # 🛡️ Sentinel Security Fix: Prevent Information Disclosure (CWE-200) via /proc/<pid>/environ in child processes.
+    # Explicitly un-export iterator variables 'key' and 'val' so they do not inherit the export attribute
+    # from the parent environment, ensuring sensitive config parts do not leak into child processes.
+    export -n key val
+    while IFS='=' read -r key val || [ -n "$key" ]; do
+        # Trim whitespace from key
+        key="${key#"${key%%[![:space:]]*}"}"
+        key="${key%"${key##*[![:space:]]}"}"
+        # Skip empty lines and comments
+        if [[ -z "$key" || "$key" == "#"* ]]; then continue; fi
+
+        # Trim whitespace, carriage returns, and quotes from value
+        val="${val#"${val%%[![:space:]]*}"}"
+        val="${val%$'\r'}"
+        val="${val#\"}"
+        val="${val%\"}"
+        val="${val#\'}"
+        val="${val%\'}"
+
+        # Only allow specific configuration variables to prevent environment injection (e.g. overwriting PATH)
+        if [[ "$key" == "TELEGRAM_TOKEN" || "$key" == "TELEGRAM_CHATID" || "$key" == "AUTO_UPDATE" || "$key" == "SKIP_UPDATE" ]]; then
+            printf -v "$key" "%s" "$val"
+        fi
+    done < "$CONFIG_FILE"
+fi
+
+# 3. Verify presence of required variables (loaded from config or inherited from env)
+if [ -z "$TELEGRAM_TOKEN" ] || [ -z "$TELEGRAM_CHATID" ]; then
+    echo "Error: TELEGRAM_TOKEN or TELEGRAM_CHATID is not configured!" >&2
+    echo "Please create a 'telegram_config.env' file in the same directory as the script" >&2
+    echo "or set the corresponding environment variables." >&2
+    exit 1
+fi
+
+# 🛡️ Sentinel Security Fix: Validate external credentials against strict allow-lists before interpolating
+# them into network URLs to prevent Server-Side Request Forgery (SSRF) and URL manipulation vulnerabilities.
+if [[ ! "$TELEGRAM_TOKEN" =~ ^[0-9]+:[a-zA-Z0-9_-]+$ ]]; then
+    echo "Error: TELEGRAM_TOKEN has an invalid format!" >&2
+    exit 1
+fi
+
+if [[ ! "$TELEGRAM_CHATID" =~ ^-?[0-9]+$ ]] && [[ ! "$TELEGRAM_CHATID" =~ ^@[a-zA-Z0-9_]+$ ]]; then
+    echo "Error: TELEGRAM_CHATID has an invalid format!" >&2
+    exit 1
+fi
+
+# 🛡️ Sentinel Security Fix: Un-export sensitive credentials to prevent leakage to child processes
+export -n TELEGRAM_TOKEN TELEGRAM_CHATID TELEGRAM_URL
+
+TELEGRAM_URL="https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage"
+
+# Auto-update: check GitHub for a newer version and replace itself
+auto_update() {
+    local latest_version tmp_script cache_file cache_failure_file first_line latest_tag dl_url DOWNLOAD_REF uid_cache
+    uid_cache="${EUID:-$(id -u)}"
+    local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/duplicati-telegram"
+    # ⚡ Bolt Optimization: Use POSIX-compliant short-circuit `[ -d ]` to avoid fork/exec overhead for `mkdir -p` when cache exists
+    [ -d "$cache_dir" ] || mkdir -p "$cache_dir" 2>/dev/null || cache_dir="${TMPDIR:-/tmp}"
+    cache_file="$cache_dir/.duplicati_telegram_version_cache_$uid_cache"
+    # ⚡ Bolt Optimization: Negative cache file to prevent repeated 10s network timeouts when offline
+    cache_failure_file="$cache_dir/.duplicati_telegram_version_cache_failure_$uid_cache"
+
+    # Determine the latest release. Hybrid strategy:
+    # 1) Prefer the official GitHub "latest release" (tag vX.Y.Z) via the API.
+    # 2) Fall back to version.txt on the main branch if the API fails (e.g.
+    #    unauthenticated rate limit, network, or no release published yet).
+    # The result is cached for 24 hours to avoid a blocking request on every run.
+    if [ -f "$cache_file" ] && [ -n "$(find "$cache_file" -mmin -1440 2>/dev/null)" ]; then
+        IFS= read -r latest_version < "$cache_file"
+        # 🛡️ Sentinel Security Fix: Validate cached version to prevent cache poisoning/path traversal
+        if [[ "$latest_version" == *[!a-zA-Z0-9.-]* ]]; then
+            return
+        fi
+    # If a previous network check failed recently (e.g., within 60 mins), skip the check to avoid blocking
+    elif [ -f "$cache_failure_file" ] && [ -n "$(find "$cache_failure_file" -mmin -60 2>/dev/null)" ]; then
+        return
+    else
+        # ⚡ Bolt Optimization: Use HTTP HEAD request to the GitHub web release redirect instead of fetching
+        # the entire JSON API payload. Then, parse the Location header using native Bash regex.
+        # This saves bandwidth and eliminates fork/exec overhead from external binaries like sed/head.
+        local headers
+        # 🛡️ Sentinel Security Fix: Always include the -f (--fail) flag when downloading external version strings to fail securely
+        headers=$(curl -sfI --connect-timeout 5 --max-time 5 --proto '=https' "$GITHUB_RELEASE_LATEST" 2>/dev/null)
+        if [[ "$headers" =~ [Ll]ocation:[[:space:]]*.*/tag/([^[:space:]$'\r\n']+) ]]; then
+            latest_tag="${BASH_REMATCH[1]}"
+            # 🛡️ Sentinel Security Fix: Prevent Path Traversal in GitHub URL redirect
+            if [[ "$latest_tag" == *[!a-zA-Z0-9.-]* ]]; then return; fi
+        fi
+
+        if [ -n "$latest_tag" ]; then
+            # vX.Y.Z -> X.Y.Z, so it can be compared with SCRIPT_VERSION and cached
+            latest_version="${latest_tag#v}"
+            # Remember which source we used so the download matches (must not be cached wrongly)
+            DOWNLOAD_REF="$latest_tag"
+        else
+            latest_version=$(curl -sf --compressed --connect-timeout 5 --max-time 5 --proto '=https' "$GITHUB_RAW_BASE/version.txt" 2>/dev/null)
+            latest_version="${latest_version//$'\r'/}"
+            latest_version="${latest_version//$'\n'/}"
+            # 🛡️ Sentinel Security Fix: Validate downloaded version to prevent cache poisoning/path traversal
+            if [[ "$latest_version" == *[!a-zA-Z0-9.-]* ]]; then
+                latest_version=""
+            fi
+            [ -n "$latest_version" ] && DOWNLOAD_REF="main"
+        fi
+        if [ -n "$latest_version" ]; then
+            local tmp_cache
+            tmp_cache=$(mktemp "${cache_dir}/.version_cache_tmp_${uid_cache}_XXXXXX")
+            printf "%s\n" "$latest_version" > "$tmp_cache"
+            mv -f "$tmp_cache" "$cache_file"
+            rm -f "$cache_failure_file"
+        else
+            # ⚡ Bolt Optimization: Cache the network failure to avoid 10s timeout on the next run
+            # 🛡️ Sentinel Security Fix: Prevent Symlink Arbitrary File Overwrite by using a secure temporary file
+            local tmp_failure
+            tmp_failure=$(mktemp "${cache_dir}/.version_cache_failure_tmp_${uid_cache}_XXXXXX")
+            if [ -n "$tmp_failure" ]; then
+                mv -f "$tmp_failure" "$cache_failure_file" 2>/dev/null || rm -f "$tmp_failure"
+            fi
+        fi
+    fi
+    [ -z "$latest_version" ] && return
+    # When reading from cache, DOWNLOAD_REF is unset: reconstruct it from the cached version.
+    : "${DOWNLOAD_REF:=v${latest_version}}"
+
+    if [ "$latest_version" != "$SCRIPT_VERSION" ] && [ "$(printf '%s\n' "$SCRIPT_VERSION" "$latest_version" | sort -V | tail -1)" = "$latest_version" ]; then
+        local cache_dir="${XDG_CACHE_HOME:-${HOME:+$HOME/.cache}}"
+        cache_dir="${cache_dir:-${TMPDIR:-/tmp}}"
+        # ⚡ Bolt Optimization: Use POSIX-compliant short-circuit `[ -d ]` to avoid fork/exec overhead for `mkdir -p` when cache exists
+        [ -d "$cache_dir" ] || mkdir -p "$cache_dir" 2>/dev/null || cache_dir="/tmp"
+        tmp_script=$(mktemp "$cache_dir/notify_to_telegram_${uid_cache}_XXXXXX")
+
+        # Download the script from the same source that reported the latest version:
+        # a release tag -> that tag on raw.githubusercontent.com; fallback -> main branch.
+        if [ "$DOWNLOAD_REF" != "main" ]; then
+            dl_url="https://raw.githubusercontent.com/$GITHUB_OWNER/$GITHUB_REPO/$DOWNLOAD_REF/notify_to_telegram.sh"
+        else
+            dl_url="$GITHUB_RAW_BASE/notify_to_telegram.sh"
+        fi
+
+        if curl -sf --compressed --connect-timeout 5 --max-time 10 --proto '=https' -o "$tmp_script" "$dl_url" 2>/dev/null && [ -s "$tmp_script" ]; then
+            IFS= read -r first_line < "$tmp_script"
+            if [[ "$first_line" != "#!/bin/bash"* ]]; then
+                rm -f "$tmp_script"
+                return
+            fi
+            if ! diff -q "$tmp_script" "$SCRIPT_PATH" &>/dev/null; then
+                # 🛡️ Sentinel Security Fix: Use mv -f instead of cp to prevent CWE-59 Symlink Arbitrary File Overwrite
+                chmod +x "$tmp_script" && mv -f "$tmp_script" "$SCRIPT_PATH"
+                rm -f "$tmp_script"
+                export UPDATED_FROM_VERSION="$SCRIPT_VERSION"
+                # 🔧 Re-export the credentials and variables for the self-reexec only: they were stripped from the
+                # environment above, but ENV-configured installs (Docker) have no config file to reload.
+                # 🛡️ Sentinel Security Fix: Explicitly re-export TELEGRAM_URL which was globally un-exported
+                export TELEGRAM_TOKEN TELEGRAM_CHATID TELEGRAM_URL
+                local var
+                for var in "${!DUPLICATI__@}"; do
+                    export "$var"
+                done
+                exec "$SCRIPT_PATH" "$@"
+            fi
+        fi
+        rm -f "$tmp_script"
+    fi
+}
+
+# Run auto-update synchronously (short timeouts: ~5s max if no update, ~15s for full update)
+# Enabled by default; disable with AUTO_UPDATE="false" in telegram_config.env (or legacy SKIP_UPDATE=1 env var)
+# ⚡ Bolt Optimization: Defer auto_update during BEFORE events to avoid blocking network latency from delaying the backup
+if [ "${AUTO_UPDATE:-true}" = "true" ] && [ -z "$SKIP_UPDATE" ] && [ "$DUPLICATI__EVENTNAME" != "BEFORE" ] && command -v curl &>/dev/null; then
+    auto_update "$@"
+fi
+
+# Function to escape HTML characters
+function escapeHTML() {
+    local val="$1"
+    local __resultvar="$2"
+
+    # ⚡ Bolt Optimization: Early return if string contains no HTML-sensitive characters
+    # to avoid the overhead of multiple pattern substitution passes and shopt calls.
+    if [[ "$val" == *[\<\>\&]* ]]; then
+        shopt -u patsub_replacement 2>/dev/null || true
+        val="${val//&/&amp;}"
+        val="${val//</&lt;}"
+        val="${val//>/&gt;}"
+    fi
+
+    if [ -n "$__resultvar" ]; then
+        printf -v "$__resultvar" "%s" "$val"
+    else
+        echo "$val"
+    fi
+}
+
+# Function to format numerical values with thousands separators
+# 🛡️ Sentinel: this function replaces escapeHTML for the numeric count columns, so it must
+# guarantee the output is inert on its own. Non-digit characters are stripped, which means the
+# result can only ever contain digits and commas - never raw <, > or & from the environment.
+function formatNumber() {
+    local formatted="$1"
+    local __resultvar="$2"
+    formatted="${formatted//[!0-9]/}"
+    [ -z "$formatted" ] && formatted=0
+    # ⚡ Bolt Optimization: Use pure bash string slicing instead of expensive regex loop to format thousands separator.
+    local len=${#formatted}
+    local out=""
+    while (( len > 3 )); do
+        out=",${formatted:len-3:3}${out}"
+        ((len -= 3))
+    done
+    out="${formatted:0:len}${out}"
+    if [ -n "$__resultvar" ]; then
+        printf -v "$__resultvar" "%s" "$out"
+    else
+        echo "$out"
+    fi
+}
+
+# Function to convert file sizes to human-readable format
+function getFriendlyFileSize() {
+    local size="$1"
+    local __resultvar="$2"
+    local val
+    case "$size" in
+        ''|*[!0-9]*)
+            size=0
+            ;;
+    esac
+    # 🛡️ Sentinel Security Fix: Parse as base 10 to prevent octal evaluation errors with leading zeros
+    size=$((10#$size))
+    # ⚡ Bolt Optimization: Replaced awk subshells with native bash integer arithmetic to prevent fork/exec overhead.
+    if [ "$size" -eq 0 ]; then
+        val='0 B'
+    elif [ "$size" -ge 1099511627776 ]; then
+        val=$(( (size * 100 / 1099511627776 + 5) / 10 ))
+        val="$((val / 10)).$((val % 10)) TB"
+    elif [ "$size" -ge 1073741824 ]; then
+        val=$(( (size * 100 / 1073741824 + 5) / 10 ))
+        val="$((val / 10)).$((val % 10)) GB"
+    elif [ "$size" -ge 1048576 ]; then
+        val=$(( (size * 100 / 1048576 + 5) / 10 ))
+        val="$((val / 10)).$((val % 10)) MB"
+    elif [ "$size" -ge 1024 ]; then
+        val=$(( (size * 100 / 1024 + 5) / 10 ))
+        val="$((val / 10)).$((val % 10)) KB"
+    elif [ "$size" -gt 0 ]; then
+        val="${size} B"
+    else
+        val='0 B'
+    fi
+
+    if [ -n "$__resultvar" ]; then
+        printf -v "$__resultvar" "%s" "$val"
+    else
+        echo "$val"
+    fi
+}
+
+# Securely parse the result file to avoid command injection
+function parseResultFile () {
+    [ -f "$DUPLICATI__RESULTFILE" ] || return
+    # 🛡️ Sentinel Security Fix: Explicitly unset any pre-existing variables matching the RES_ prefix
+    # before parsing. This prevents inherited environment variables from manipulating the script logic
+    # if the external backup log omits those keys.
+    local var
+    for var in "${!RES_@}"; do unset "$var"; done
+    # 🛡️ Sentinel Security Fix: Un-export loop iterators to prevent Information Disclosure to child processes
+    local key val; export -n key val
+    # ⚡ Bolt Optimization: Use process substitution with grep to instantly strip unparseable lines
+    # before they reach the slow Bash read loop. This prevents significant CPU overhead when parsing
+    # large backup log files filled with generic, non-colon-separated output.
+    # 🛡️ Sentinel Security Fix: Prevent Information Disclosure (CWE-200) via /proc/<pid>/environ in child processes.
+    # Explicitly un-export iterator variables 'key' and 'val' before reading the result file to guarantee
+    # they don't leak into spawned processes if they inherited the export attribute from the environment.
+    export -n key val
+    while IFS=':' read -r key val || [ -n "$key" ]; do
+        [[ -z "$val" ]] && continue
+        key="${key//[[:space:]]/}"
+        # ⚡ Bolt Optimization: Early exit for invalid keys before doing expensive value string manipulations
+        if [[ -z "$key" || "$key" == *[!a-zA-Z0-9_]* || "$key" == [0-9]* ]]; then
+            continue
+        fi
+        val="${val#"${val%%[![:space:]]*}"}"
+        val="${val%$'\r'}"
+        # 🛡️ Sentinel Security Fix: Truncate excessively long parsed values to prevent DoS via Telegram API length limits
+        val="${val:0:1500}"
+        export -n "RES_$key"
+        printf -v "RES_$key" "%s" "$val"
+    # ⚡ Bolt Optimization: Use strict regex to exclude unrelated lines (e.g. timestamps with hyphens) before bash loop
+    # 🛡️ Sentinel Security Fix: Use -- to prevent argument injection if the filename starts with a hyphen (e.g. -r)
+    # ⚡ Bolt Optimization: Enforce the C locale using LC_ALL=C for the grep operation. Bypassing complex
+    # multi-byte UTF-8 character evaluation allows GNU grep to process massive log files significantly faster.
+    done < <(LC_ALL=C grep '^[[:space:]]*[a-zA-Z_][a-zA-Z0-9_]*[[:space:]]*:' -- "$DUPLICATI__RESULTFILE")
+}
+
+# Function to generate the result line with appropriate icon
+function getResultLine () {
+    local __resultvar="$1"
+    # ⚡ Bolt Optimization: Replaced expensive `echo ... | sed ...` subshells with native bash string parameter expansion.
+    # This avoids spawning child processes for string stripping, significantly improving script performance.
+    case "$DUPLICATI__EVENTNAME" in
+        BEFORE) CURRENT_STATUS="Started" ;;
+        AFTER)  CURRENT_STATUS="Finished" ;;
+        *)      CURRENT_STATUS="$DUPLICATI__EVENTNAME" ;;
+    esac
+
+    case "$DUPLICATI__PARSED_RESULT" in
+        Unknown) RESULT_ICON="🟣" ;;
+        Success) RESULT_ICON="✅" ;;
+        Warning) RESULT_ICON="⚠️" ;;
+        Error)   RESULT_ICON="❌" ;;
+        Fatal)   RESULT_ICON="💥" ;;
+        *)       RESULT_ICON="❓" ;;
+    esac
+
+    local safe_backup_name safe_op_name safe_status safe_result safe_duration
+    escapeHTML "${DUPLICATI__backup_name:-Unknown Task}" safe_backup_name
+    escapeHTML "${DUPLICATI__OPERATIONNAME:-Unknown Operation}" safe_op_name
+    escapeHTML "${CURRENT_STATUS:-Unknown Status}" safe_status
+    escapeHTML "${DUPLICATI__PARSED_RESULT:-Unknown Result}" safe_result
+    escapeHTML "$Duration" safe_duration
+
+    # ⚡ Bolt Optimization: Pre-formatted string to avoid runtime loop trimming.
+    # 🎨 Palette UX Enhancement: Dynamic header icon for better glanceability.
+    local output="<b>${RESULT_ICON:-💾} DUPLICATI BACKUP</b>
+<pre>
+———————————————————————————————
+📋 <b>Task:</b>      $safe_backup_name
+⚙️ <b>Operation:</b> $safe_op_name
+📊 <b>Status:</b>    $safe_status
+${RESULT_ICON} <b>Result:</b>    $safe_result
+———————————————————————————————
+⏱ <b>Duration:</b>  $safe_duration
+———————————————————————————————"
+
+    if [ -n "$__resultvar" ]; then
+        printf -v "$__resultvar" "%s" "$output"
+    else
+        echo "$output"
+    fi
+}
+
+# Function to handle fatal errors
+function getResultFatal () {
+    local __resultvar="$1"
+    local safe_failed safe_details
+
+    # 🛡️ Sentinel Security Fix: Truncate unbounded inputs (like stack traces) to prevent
+    # 400 Bad Request errors (DoS) due to exceeding Telegram's 4096-character limit.
+    # 🎨 Palette UX Enhancement: Provide explicit empty states for missing details
+    local failed_text="${RES_Failed:-Unknown Error}"
+    local details_text="${RES_Details:-No additional details provided.}"
+
+    local truncated_failed="${failed_text:0:1500}"
+    local truncated_details="${details_text:0:1500}"
+
+    # Add ellipsis if truncated
+    [[ "${#failed_text}" -gt 1500 ]] && truncated_failed="${truncated_failed}..."
+    [[ "${#details_text}" -gt 1500 ]] && truncated_details="${truncated_details}..."
+
+    escapeHTML "$truncated_failed" safe_failed
+    escapeHTML "$truncated_details" safe_details
+
+    # ⚡ Bolt Optimization: Pre-formatted string to avoid runtime loop trimming.
+    local output="❗ <b>Error:</b> $safe_failed
+📋 <b>Details:</b> $safe_details
+———————————————————————————————
+💡 <b>Action:</b> Review the Duplicati web interface or host logs for complete diagnostic details."
+
+    if [ -n "$__resultvar" ]; then
+        printf -v "$__resultvar" "%s" "$output"
+    else
+        echo "$output"
+    fi
+}
+
+# Function to handle restore operations
+function getOperationRestore () {
+    local __resultvar="$1"
+    local s_restored s_deleted s_patched
+    getFriendlyFileSize "$RES_SizeOfRestoredFiles" s_restored
+    # ⚡ Bolt Optimization: Use direct static variable assignment to avoid function overhead for deterministically static values
+    s_deleted="0 B"
+    s_patched="0 B"
+
+    local safe_restored_files safe_deleted_files safe_patched_files safe_restored_folders safe_deleted_folders
+    formatNumber "${RES_RestoredFiles:-0}" safe_restored_files
+    formatNumber "${RES_DeletedFiles:-0}" safe_deleted_files
+    formatNumber "${RES_PatchedFiles:-0}" safe_patched_files
+    formatNumber "${RES_RestoredFolders:-0}" safe_restored_folders
+    formatNumber "${RES_DeletedFolders:-0}" safe_deleted_folders
+
+    local output
+    printf -v output "\n📂 <b>FILES:</b>         count       size\n📥 <b>Restored:</b>     %9s %10s\n🗑️ <b>Deleted:</b>      %9s %10s\n🛠️ <b>Patched:</b>      %9s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>       count       size\n📂 <b>Restored:</b>     %9s %10s\n🗑️ <b>Deleted:</b>      %9s %10s" \
+        "$safe_restored_files" "$s_restored" "$safe_deleted_files" "$s_deleted" "$safe_patched_files" "$s_patched" \
+        "$safe_restored_folders" "$s_deleted" "$safe_deleted_folders" "$s_deleted"
+
+    # 🎨 Palette UX Enhancement: Add helpful CTA for Warning/Error states
+    if [[ "$DUPLICATI__PARSED_RESULT" == "Warning" || "$DUPLICATI__PARSED_RESULT" == "Error" ]]; then
+        output+=$'\n———————————————————————————————\n💡 <b>Action:</b> Review the Duplicati web interface to resolve these issues.'
+    fi
+
+    if [ -n "$__resultvar" ]; then
+        printf -v "$__resultvar" "%s" "$output"
+    else
+        echo "$output"
+    fi
+}
+
+# Function to handle backup operations
+function getOperationBackup () {
+    local __resultvar="$1"
+    local s_add s_del s_mod s_opn s_exm s_fadd s_fdel s_fmod
+    getFriendlyFileSize "$RES_SizeOfAddedFiles" s_add
+    # ⚡ Bolt Optimization: Use direct static variable assignment to avoid function overhead for deterministically static values
+    s_del="0 B"
+    getFriendlyFileSize "$RES_SizeOfModifiedFiles" s_mod
+    getFriendlyFileSize "$RES_SizeOfOpenedFiles" s_opn
+    getFriendlyFileSize "$RES_SizeOfExaminedFiles" s_exm
+    # ⚡ Bolt Optimization: Use direct static variable assignment to avoid function overhead for deterministically static values
+    s_fadd="0 B"
+    s_fdel="0 B"
+    s_fmod="0 B"
+
+    local safe_added_files safe_deleted_files safe_modified_files safe_opened_files safe_examined_files
+    local safe_added_folders safe_deleted_folders safe_modified_folders
+    formatNumber "${RES_AddedFiles:-0}" safe_added_files
+    formatNumber "${RES_DeletedFiles:-0}" safe_deleted_files
+    formatNumber "${RES_ModifiedFiles:-0}" safe_modified_files
+    formatNumber "${RES_OpenedFiles:-0}" safe_opened_files
+    formatNumber "${RES_ExaminedFiles:-0}" safe_examined_files
+    formatNumber "${RES_AddedFolders:-0}" safe_added_folders
+    formatNumber "${RES_DeletedFolders:-0}" safe_deleted_folders
+    formatNumber "${RES_ModifiedFolders:-0}" safe_modified_folders
+
+    local output
+    printf -v output "\n📂 <b>FILES:</b>         count       size\n➕ <b>Added:</b>        %9s %10s\n➖ <b>Deleted:</b>      %9s %10s\n🔧 <b>Changed:</b>      %9s %10s\n🔍 <b>Opened:</b>       %9s %10s\n🔎 <b>Examined:</b>     %9s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>       count       size\n➕ <b>Added:</b>        %9s %10s\n➖ <b>Deleted:</b>      %9s %10s\n🔧 <b>Changed:</b>      %9s %10s" \
+        "$safe_added_files" "$s_add" "$safe_deleted_files" "$s_del" "$safe_modified_files" "$s_mod" \
+        "$safe_opened_files" "$s_opn" "$safe_examined_files" "$s_exm" "$safe_added_folders" "$s_fadd" \
+        "$safe_deleted_folders" "$s_fdel" "$safe_modified_folders" "$s_fmod"
+
+    # 🎨 Palette UX Enhancement: Add helpful CTA for Warning/Error states
+    if [[ "$DUPLICATI__PARSED_RESULT" == "Warning" || "$DUPLICATI__PARSED_RESULT" == "Error" ]]; then
+        output+=$'\n———————————————————————————————\n💡 <b>Action:</b> Review the Duplicati web interface to resolve these issues.'
+    fi
+
+    if [ -n "$__resultvar" ]; then
+        printf -v "$__resultvar" "%s" "$output"
+    else
+        echo "$output"
+    fi
+}
+
+# Generate message content
+if [ "$DUPLICATI__EVENTNAME" == "AFTER" ]; then
+    # ⚡ Bolt Optimization: Call parseResultFile once globally to avoid redundant disk I/O,
+    # and use native bash parameter expansion to extract Duration without expensive grep/sed/tr subshells.
+    parseResultFile
+    Duration="${RES_Duration%%.*}"
+    [ -z "$Duration" ] && Duration="00:00:00"
+    getResultLine MESSAGE
+    TEMP_MSG=""
+    if [ "$DUPLICATI__OPERATIONNAME" == "Restore" ]; then
+        getOperationRestore TEMP_MSG
+        MESSAGE+="$TEMP_MSG"
+    elif [ "$DUPLICATI__PARSED_RESULT" == "Fatal" ]; then
+        getResultFatal TEMP_MSG
+        MESSAGE+="$TEMP_MSG"
+    else
+        getOperationBackup TEMP_MSG
+        MESSAGE+="$TEMP_MSG"
+    fi
+else
+    # ⚡ Bolt Optimization: Replaced `echo | sed` subshell with native bash `case` statement to prevent fork/exec overhead.
+    case "$DUPLICATI__EVENTNAME" in
+        BEFORE) CURRENT_STATUS="Started" ;;
+        AFTER)  CURRENT_STATUS="Finished" ;;
+        *)      CURRENT_STATUS="$DUPLICATI__EVENTNAME" ;;
+    esac
+
+    safe_backup_name=""
+    safe_op_name=""
+    safe_status=""
+    escapeHTML "${DUPLICATI__backup_name:-Unknown Task}" safe_backup_name
+    escapeHTML "${DUPLICATI__OPERATIONNAME:-Unknown Operation}" safe_op_name
+    escapeHTML "${CURRENT_STATUS:-Unknown Status}" safe_status
+
+    # 🎨 Palette UX Enhancement: Dynamic header icon for better glanceability.
+    header_icon="💾"
+    if [ "$DUPLICATI__EVENTNAME" == "BEFORE" ]; then
+        header_icon="⏳"
+    fi
+
+    MESSAGE="<b>${header_icon} DUPLICATI BACKUP</b>
+<pre>
+———————————————————————————————
+📋 <b>Task:</b>      $safe_backup_name
+⚙️ <b>Operation:</b> $safe_op_name
+📊 <b>Status:</b>    $safe_status
+</pre>"
+fi
+
+# Send message to Telegram with HTML formatting
+MESSAGE+="
+</pre>"
+
+# 🎨 Palette UX Enhancement: Add clickable tags for easy filtering in Telegram
+raw_op="${DUPLICATI__OPERATIONNAME:-UnknownOperation}"
+clean_op="${raw_op//[^a-zA-Z0-9_]/}"
+raw_result="${DUPLICATI__PARSED_RESULT:-UnknownResult}"
+clean_result="${raw_result//[^a-zA-Z0-9_]/}"
+tags="#Duplicati #${clean_op:-UnknownOperation} #${clean_result:-UnknownResult}"
+MESSAGE+="
+$tags
+"
+
+# Append script version info to the message
+if [ -n "$UPDATED_FROM_VERSION" ] && [ "$UPDATED_FROM_VERSION" != "$SCRIPT_VERSION" ]; then
+    escapeHTML "$UPDATED_FROM_VERSION" safe_updated_version
+    escapeHTML "$SCRIPT_VERSION" safe_script_version
+    MESSAGE+="🔄 <b>Script updated:</b> v${safe_updated_version} → v${safe_script_version}"
+else
+    escapeHTML "$SCRIPT_VERSION" safe_script_version
+    MESSAGE+="⚙️ <b>Script version:</b> v${safe_script_version}"
+fi
+
+# ⚡ Bolt Optimization: Removed detached subshell execution. Running asynchronously
+# drops the notification in short-lived environments before the request completes.
+# 🛡️ Sentinel Security Fix: Prevent Information Disclosure (CWE-200) in system process lists
+# by passing sensitive API configurations via process substitution (-K) instead of command-line
+# arguments, and piping the message payload via standard input.
+# 🛡️ Sentinel Security Fix: Un-export dynamically derived internal variables to prevent leakage to child processes.
+export -n MESSAGE Duration TEMP_MSG CURRENT_STATUS safe_backup_name safe_op_name safe_status header_icon raw_op raw_result RESULT_ICON clean_op clean_result tags safe_updated_version safe_script_version
+printf "%s" "$MESSAGE" | curl -s --connect-timeout 10 --max-time 30 --proto '=https' -K <(cat <<EOF
+url="$TELEGRAM_URL"
+data-urlencode="chat_id=$TELEGRAM_CHATID"
+data-urlencode="parse_mode=HTML"
+EOF
+) --data-urlencode "text@-" > /dev/null 2>&1
+
+exit 0
