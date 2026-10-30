@@ -214,6 +214,8 @@ auto_update() {
                 return
             fi
             if ! diff -q "$tmp_script" "$SCRIPT_PATH" &>/dev/null; then
+                # 🛡️ Sentinel Security Fix: Refuse to replace a symlinked script path (CWE-59) to avoid arbitrary file overwrite.
+                if [[ -L "$SCRIPT_PATH" ]]; then rm -f "$tmp_script"; return; fi
                 # 🛡️ Sentinel Security Fix: Use mv -f instead of cp to prevent CWE-59 Symlink Arbitrary File Overwrite
                 chmod +x "$tmp_script" && mv -f "$tmp_script" "$SCRIPT_PATH"
                 rm -f "$tmp_script"
