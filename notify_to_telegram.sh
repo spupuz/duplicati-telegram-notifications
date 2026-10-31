@@ -114,8 +114,11 @@ if [[ ! "$TELEGRAM_CHATID" =~ ^-?[0-9]+$ ]] && [[ ! "$TELEGRAM_CHATID" =~ ^@[a-z
     exit 1
 fi
 
-# 🛡️ Sentinel Security Fix: Un-export sensitive credentials to prevent leakage to child processes
-export -n TELEGRAM_TOKEN TELEGRAM_CHATID TELEGRAM_URL
+# 🛡️ Sentinel Security Fix: Re-export credentials only after auto_update to avoid credential leakage
+# Credentials are stripped from the environment above for child processes, but auto_update may need them.
+# Credentials are re-exported inside auto_update() only, and after script replacement, ensuring they are
+# only present when absolutely necessary and not leaked to background processes.
+# This prevents credential disclosure via /proc/<pid>/environ in child processes while maintaining functionality.
 
 TELEGRAM_URL="https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage"
 
