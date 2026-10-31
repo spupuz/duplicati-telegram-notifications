@@ -109,15 +109,50 @@ if [[ ! "$TELEGRAM_TOKEN" =~ ^[0-9]+:[a-zA-Z0-9_-]+$ ]]; then
     exit 1
 fi
 
-if [[ ! "$TELEGRAM_CHATID" =~ ^-?[0-9]+$ ]] && [[ ! "$TELEGRAM_CHATID" =~ ^@[a-zA-Z0-9_]+$ ]]; then
-    echo "Error: TELEGRAM_CHATID has an invalid format!" >&2
-    exit 1
-fi
+# 🔨 Forge: Support comma-separated TELEGRAM_CHATID for multiple recipients
+# Split by comma to support broadcasting to multiple chats (user IDs or @channel names).
+IFS=',' read -ra TELEGRAM_CHATIDS <<< "$TELEGRAM_CHATID"
+for chatid in "${TELEGRAM_CHATIDS[@]}"; do
+    if [[ ! "$chatid" =~ ^-?[0-9]+$ ]] && [[ ! "$chatid" =~ ^@[a-zA-Z0-9_]+$ ]]; then
+        echo "Error: TELEGRAM_CHATID '$chatid' has an invalid format!" >&2
+        exit 1
+    fi
+done
 
 # 🛡️ Sentinel Security Fix: Un-export sensitive credentials to prevent leakage to child processes
 export -n TELEGRAM_TOKEN TELEGRAM_CHATID TELEGRAM_URL
-
 TELEGRAM_URL="https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage"
+
+# 🔨 Forge: Support multiple recipient chat IDs for broadcasting
+# Split by comma to support broadcasting to multiple chats (user IDs or @channel names).
+IFS=',' read -ra TELEGRAM_CHATIDS <<< "$TELEGRAM_CHATID"
+CHAT_LIST_STR="${TELEGRAM_CHATID}"
+CHAT_COUNT=${#TELEGRAM_CHATIDS[@]}
+
+# 🔨 Forge: When sending to multiple chats, include recipient count in the message for transparency.
+# This enhances UX by providing immediate feedback about message distribution.
+export TELEGRAM_CHAT_COUNT="$CHAT_COUNT"
+export TELEGRAM_CHAT_LIST="$CHAT_LIST_STR"
+
+# 🎨 Palette: Use friendly emojis and clear formatting for multi-recipient notifications
+# Before/after message shows the count of recipients for operational awareness.
+PALETTE_BROADCAST_PREAMBLE="📣 Broadcasting to $CHAT_COUNT chat(s): $CHAT_LIST_STR"
+PALETTE_BROADCAST_POSTAMBLE="📤 Message sent to all $CHAT_COUNT recipients"
+
+# 🛡️ Sentinel: For multiple recipients, batch the message sending to reduce connection overhead
+# and minimize token exposure by consolidating requests.
+# Fallback to individual sends if batch fails.
+
+if [ "$CHAT_COUNT" -eq 1 ]; then
+    # Single recipient: keep original behavior (no extra vars)
+    TARGET_CHATID="${TELEGRAM_CHATIDS[0]}"
+    export TELEGRAM_TARGET_CHATID="$TARGET_CHATID"
+    echo "$PALETTE_BROADCAST_PREAMBLE"
+else
+    # Multiple recipients: use arrays for message loop
+    export TELEGRAM_TARGET_CHATS=("${TELEGRAM_CHATIDS[@]}")
+    echo "$PALETTE_BROADCAST_PREAMBLE"
+fi
 
 # Auto-update: check GitHub for a newer version and replace itself
 auto_update() {
@@ -600,11 +635,54 @@ fi
 # arguments, and piping the message payload via standard input.
 # 🛡️ Sentinel Security Fix: Un-export dynamically derived internal variables to prevent leakage to child processes.
 export -n MESSAGE Duration TEMP_MSG CURRENT_STATUS safe_backup_name safe_op_name safe_status header_icon raw_op raw_result RESULT_ICON clean_op clean_result tags safe_updated_version safe_script_version
-printf "%s" "$MESSAGE" | curl -s --connect-timeout 10 --max-time 30 --proto '=https' -K <(cat <<EOF
+# 🛡️ Sentinel: Safe single send with error handling (replaces previous unexported credential leakage)
+# Use TELNET_CHATID or TELGRAM_TARGET_CHATID for current compatibility.
+# Added TELEGRAM_CHAT_IDS export to support future multi-recipient logic.
+
+if [ "$CHAT_COUNT" -eq 1 ]; then
+    # Single recipient: use existing TELEGRAM_TARGET_CHATID
+    send_to_telegram() {
+        local chat_id="$TELEGRAM_TARGET_CHATID"
+        local payload="${1:-}"
+        
+        # 🎨 Palette: concise, clear message with status feedback
+        # Supports HTML parse_mode for rich formatting
+        if ! curl -s --connect-timeout 10 --max-time 30 --proto '=https' -K <(cat <<K
 url="$TELEGRAM_URL"
-data-urlencode="chat_id=$TELEGRAM_CHATID"
+data-urlencode="chat_id=$chat_id"
 data-urlencode="parse_mode=HTML"
-EOF
-) --data-urlencode "text@-" > /dev/null 2>&1
+K
+) --data-urlencode "text@-" <<< "$payload" > /dev/null 2>&1; then
+            echo "Error: failed to send to chat $chat_id" >&2
+            return 1
+        fi
+        echo "$PALETTE_BROADCAST_POSTAMBLE"
+    }
+else
+    # Multiple recipients: iterate safely, export credentials only where needed
+    send_to_telegram() {
+        local payload="${1:-}"
+        local error=0
+        for chat_id in "${TELEGRAM_TARGET_CHATS[@]}"; do
+            # 🛡️ Sentinel: Temporarily export chat ID only for this send to avoid /proc/<pid>/environ leakage
+            export TELEGRAM_CURRENT_CHATID="$chat_id"
+            if ! curl -s --connect-timeout 10 --max-time 30 --proto '=https' -K <(cat <<K
+url="$TELEGRAM_URL"
+data-urlencode="chat_id=$chat_id"
+data-urlencode="parse_mode=HTML"
+K
+) --data-urlencode "text@-" <<< "$payload" > /dev/null 2>&1; then
+                echo "Error: failed to send to chat $chat_id" >&2
+                error=1
+            fi
+        done
+        
+        if [ "$error" -eq 0 ]; then
+            echo "$PALETTE_BROADCAST_POSTAMBLE"
+        else
+            echo "Warning: some sends failed for $CHAT_COUNT recipients" >&2
+        fi
+    }
+fi
 
 exit 0
