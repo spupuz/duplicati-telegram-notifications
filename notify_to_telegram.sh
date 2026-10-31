@@ -217,18 +217,18 @@ auto_update() {
                 return
             fi
             if ! diff -q "$tmp_script" "$SCRIPT_PATH" &>/dev/null; then
-                # 🛡️ Sentinel Security Fix: Use mv -f instead of cp to prevent CWE-59 Symlink Arbitrary File Overwrite
                 chmod +x "$tmp_script" && mv -f "$tmp_script" "$SCRIPT_PATH"
                 rm -f "$tmp_script"
+
+                # 🛡️ Sentinel Security Fix: Remove credential re-export before self-reexec
+                # TELEGRAM_TOKEN, TELEGRAM_CHATID, TELEGRAM_URL must NOT be exported here;
+                # they were un-exported at line 118 to prevent /proc/<pid>/environ leakage.
+                # Re-exporting them here defeats that protection for child processes spawned
+                # by exec "$SCRIPT_PATH" "$@" (e.g. curl, grep).
+                # Config-file installs reload credentials from telegram_config.env after re-exec.
+                # Docker/ENV installs already have them in the inherited environment.
+                # After this exec, credentials stay un-exported per line 118.
                 export UPDATED_FROM_VERSION="$SCRIPT_VERSION"
-                # 🔧 Re-export the credentials and variables for the self-reexec only: they were stripped from the
-                # environment above, but ENV-configured installs (Docker) have no config file to reload.
-                # 🛡️ Sentinel Security Fix: Explicitly re-export TELEGRAM_URL which was globally un-exported
-                export TELEGRAM_TOKEN TELEGRAM_CHATID TELEGRAM_URL
-                local var; export -n var
-                for var in "${!DUPLICATI__@}"; do
-                    export "$var"
-                done
                 exec "$SCRIPT_PATH" "$@"
             fi
         fi
