@@ -112,6 +112,7 @@ fi
 # 🔨 Forge: Support comma-separated TELEGRAM_CHATID for multiple recipients
 # Split by comma to support broadcasting to multiple chats (user IDs or @channel names).
 IFS=',' read -ra TELEGRAM_CHATIDS <<< "$TELEGRAM_CHATID"
+export -n chatid
 for chatid in "${TELEGRAM_CHATIDS[@]}"; do
     if [[ ! "$chatid" =~ ^-?[0-9]+$ ]] && [[ ! "$chatid" =~ ^@[a-zA-Z0-9_]+$ ]]; then
         echo "Error: TELEGRAM_CHATID '$chatid' has an invalid format!" >&2
@@ -131,8 +132,10 @@ CHAT_COUNT=${#TELEGRAM_CHATIDS[@]}
 
 # 🔨 Forge: When sending to multiple chats, include recipient count in the message for transparency.
 # This enhances UX by providing immediate feedback about message distribution.
-export TELEGRAM_CHAT_COUNT="$CHAT_COUNT"
-export TELEGRAM_CHAT_LIST="$CHAT_LIST_STR"
+# 🛡️ Sentinel Security Fix: Explicitly un-export derived variables to prevent leakage to child processes.
+export -n TELEGRAM_CHAT_COUNT TELEGRAM_CHAT_LIST
+TELEGRAM_CHAT_COUNT="$CHAT_COUNT"
+TELEGRAM_CHAT_LIST="$CHAT_LIST_STR"
 
 # 🎨 Palette: Use friendly emojis and clear formatting for multi-recipient notifications
 # Before/after message shows the count of recipients for operational awareness.
@@ -143,14 +146,17 @@ PALETTE_BROADCAST_POSTAMBLE="📤 Message sent to all $CHAT_COUNT recipients"
 # and minimize token exposure by consolidating requests.
 # Fallback to individual sends if batch fails.
 
+# 🛡️ Sentinel Security Fix: Un-export derived target arrays to prevent leakage.
+export -n TELEGRAM_TARGET_CHATID TELEGRAM_TARGET_CHATS
+
 if [ "$CHAT_COUNT" -eq 1 ]; then
     # Single recipient: keep original behavior (no extra vars)
     TARGET_CHATID="${TELEGRAM_CHATIDS[0]}"
-    export TELEGRAM_TARGET_CHATID="$TARGET_CHATID"
+    TELEGRAM_TARGET_CHATID="$TARGET_CHATID"
     echo "$PALETTE_BROADCAST_PREAMBLE"
 else
     # Multiple recipients: use arrays for message loop
-    export TELEGRAM_TARGET_CHATS=("${TELEGRAM_CHATIDS[@]}")
+    TELEGRAM_TARGET_CHATS=("${TELEGRAM_CHATIDS[@]}")
     echo "$PALETTE_BROADCAST_PREAMBLE"
 fi
 
@@ -665,9 +671,9 @@ else
     send_to_telegram() {
         local payload="${1:-}"
         local error=0
+        # 🛡️ Sentinel Security Fix: Un-export loop iterator to prevent leakage to child processes
+        local chat_id; export -n chat_id
         for chat_id in "${TELEGRAM_TARGET_CHATS[@]}"; do
-            # 🛡️ Sentinel: Temporarily export chat ID only for this send to avoid /proc/<pid>/environ leakage
-            export TELEGRAM_CURRENT_CHATID="$chat_id"
             if ! curl -s --connect-timeout 10 --max-time 30 --proto '=https' -K <(cat <<K
 url="$TELEGRAM_URL"
 data-urlencode="chat_id=$chat_id"
