@@ -518,8 +518,7 @@ function getOperationBackup () {
     local __resultvar="$1"
     local s_add s_del s_mod s_opn s_exm s_fadd s_fdel s_fmod
     getFriendlyFileSize "$RES_SizeOfAddedFiles" s_add
-    # ⚡ Bolt Optimization: Use direct static variable assignment to avoid function overhead for deterministically static values
-    s_del="0 B"
+    getFriendlyFileSize "${RES_SizeOfDeletedFiles:-0}" s_del
     getFriendlyFileSize "$RES_SizeOfModifiedFiles" s_mod
     getFriendlyFileSize "$RES_SizeOfOpenedFiles" s_opn
     getFriendlyFileSize "$RES_SizeOfExaminedFiles" s_exm
