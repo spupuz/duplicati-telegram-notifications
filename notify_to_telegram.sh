@@ -687,4 +687,8 @@ K
     }
 fi
 
+# 🔨 Forge: The message is built into MESSAGE but was never transmitted.
+# Invoke the sender so the notification actually reaches Telegram.
+send_to_telegram "$MESSAGE"
+
 exit 0
