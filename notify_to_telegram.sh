@@ -311,6 +311,18 @@ function escapeHTML() {
 function formatNumber() {
     local formatted="$1"
     local __resultvar="$2"
+
+    # ⚡ Bolt Optimization: Early return using native globbing to avoid subshells
+    # and regex replacements for numbers < 1000 which don't need formatting.
+    if [[ "$formatted" == [0-9] || "$formatted" == [0-9][0-9] || "$formatted" == [0-9][0-9][0-9] ]]; then
+        if [ -n "$__resultvar" ]; then
+            printf -v "$__resultvar" "%s" "$formatted"
+        else
+            echo "$formatted"
+        fi
+        return
+    fi
+
     formatted="${formatted//[!0-9]/}"
     [ -z "$formatted" ] && formatted=0
     # ⚡ Bolt Optimization: Use pure bash string slicing instead of expensive regex loop to format thousands separator.
