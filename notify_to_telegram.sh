@@ -668,40 +668,7 @@ else
 </pre>"
 fi
 
-# Handle --help flag early, before any other processing
-if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
-    cat <<'HELP'
-Usage: notify_to_telegram.sh [--help | -h]
-
-Sends Telegram notifications about Duplicati backup results.
-
-Options:
-  --help, -h      Show this help message and exit
-
-Environment variables (via telegram_config.env or inherited):
-  TELEGRAM_TOKEN     - Bot token from @BotFather (required)
-  TELEGRAM_CHATID    - Chat or user ID to send notifications to (required)
-  AUTO_UPDATE        - Set to "false" to disable auto-update check (default: true)
-  SKIP_UPDATE        - Legacy: also disables the update check (set to 1)
-
-Telegram result file variables (set by Duplicati --run-script-before/after):
-  DUPLICATI__EVENTNAME     - BEFORE, AFTER, or other event name
-  DUPLICATI__OPERATIONNAME - Type of operation (Backup, Restore, etc.)
-  DUPLICATI__backup_name   - Name/description of the backup task
-  DUPLICATI__PARSED_RESULT - Success, Warning, Error, Fatal, or Unknown
-  DUPLICATI__RESULTFILE    - Path to Duplicati result file (.json or .xml)
-  DUPLICATI__DURATION      - Duration of the operation (seconds)
-
-Security:
-  - telegram_config.env is gitignored to prevent credential leaks
-  - Script enforces chmod 600 on config file
-  - All DUPLICATI__* variables are un-exported before child processes
-  - TELEGRAM_TOKEN format is validated against ^[0-9]+:[a-zA-Z0-9_-]+$
-
-HELP
-    exit 0
-fi
-
+# Help is already handled at the top of the script; continue normal flow.
 # Send message to Telegram with HTML formatting
 MESSAGE+="
 </pre>"
