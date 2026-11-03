@@ -22,13 +22,46 @@ An optimized shell script designed to integrate rich, beautiful, and aesthetic T
 
 ## 🛠️ Setup & Configuration
 
-### 1. Download the script
-Ensure `notify_to_telegram.sh` is present in your project directory and set as executable:
+### Installation Options
+
+#### Option 1: Quick One-Liner (Recommended)
+Download and install the script in a desired location:
 ```bash
-chmod +x notify_to_telegram.sh
+# Choose your installation path (e.g., /usr/local/bin, /opt, or your project directory)
+INSTALL_PATH="/usr/local/bin/notify_to_telegram.sh"
+
+# Download the script to your chosen path
+curl -sSL https://raw.githubusercontent.com/spupuz/duplicati-telegram-notifications/main/notify_to_telegram.sh -o "$INSTALL_PATH"
+
+# Make it executable
+chmod +x "$INSTALL_PATH"
 ```
 
-### 2. Configure credentials
+The script will auto-update itself on each run by downloading from the GitHub release/tag specified in the script. The auto-update mechanism uses the `GITHUB_RELEASE_LATEST` and `GITHUB_RAW_BASE` URLs embedded in the script.
+
+#### Option 2: Manual Download
+1. Download the script directly:
+   ```bash
+   curl -sSL https://raw.githubusercontent.com/spupuz/duplicati-telegram-notifications/main/notify_to_telegram.sh -o notify_to_telegram.sh
+   ```
+2. Make it executable:
+   ```bash
+   chmod +x notify_to_telegram.sh
+   ```
+3. Move it to your preferred location (optional):
+   ```bash
+   mv notify_to_telegram.sh /usr/local/bin/notify_to_telegram.sh
+   ```
+
+### Auto-Update Mechanism
+The script automatically checks GitHub for newer versions on each run:
+- **Preferred**: Queries the official GitHub "latest release" via the API (`releases/latest`) and downloads the script from that release tag
+- **Fallback**: If the API is unavailable (rate limit, network error, or no release published yet), it falls back to reading `version.txt` on the `main` branch
+- **Cached**: The result is cached for 24 hours to avoid a blocking network request on every run
+
+To disable auto-update, set `AUTO_UPDATE="false"` in your `telegram_config.env` file, or use the legacy `SKIP_UPDATE=1` environment variable.
+
+### 2. Configure Credentials
 1. Copy the example configuration template:
    ```bash
    cp telegram_config.env.example telegram_config.env

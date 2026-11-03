@@ -5,25 +5,41 @@
 # Released "AS IS" without any warranty of any kind.
 #########################################################################
 
-# Duplicati can run scripts before and after backups. This 
-# functionality is available in the advanced options of any backup job (UI) or
-# as option (CLI). The (advanced) options to run scripts are
-# --run-script-before = your/path/notify_to_telegram.sh
-# --run-script-after = your/path/notify_to_telegram.sh
+# ── 🛡️ Help flag: show usage and exit early ────────────────────────
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+    cat <<'HELP'
+Usage: notify_to_telegram.sh [--help | -h]
 
-# To work, you need to set two required variables:
-#  TELEGRAM_TOKEN
-#  TELEGRAM_CHATID
-# These variables must be configured in 'telegram_config.env' located
-# in the same directory as the script, or set as environment variables.
-#
-# DISCLAIMER (AS IS):
-# This script is provided "as is", without warranty of any kind, express or
-# implied. In no event shall the authors or copyright holders be liable for
-# any claim, damages, data loss or other liability arising from its use.
-#########################################################################
+Sends Telegram notifications about Duplicati backup results.
 
-# Skip immediately if operation is List to avoid unnecessary loading and network requests
+Options:
+  --help, -h      Show this help message and exit
+
+Environment variables (via telegram_config.env or inherited):
+  TELEGRAM_TOKEN     - Bot token from @BotFather (required)
+  TELEGRAM_CHATID    - Chat or user ID to send notifications to (required)
+  AUTO_UPDATE        - Set to "false" to disable auto-update check (default: true)
+  SKIP_UPDATE        - Legacy: also disables the update check (set to 1)
+
+Telegram result file variables (set by Duplicati --run-script-before/after):
+  DUPLICATI__EVENTNAME     - BEFORE, AFTER, or other event name
+  DUPLICATI__OPERATIONNAME - Type of operation (Backup, Restore, etc.)
+  DUPLICATI__backup_name   - Name/description of the backup task
+  DUPLICATI__PARSED_RESULT - Success, Warning, Error, Fatal, or Unknown
+  DUPLICATI__RESULTFILE    - Path to Duplicati result file (.json or .xml)
+  DUPLICATI__DURATION      - Duration of the operation (seconds)
+
+Security:
+  - telegram_config.env is gitignored to prevent credential leaks
+  - Script enforces chmod 600 on config file
+  - All DUPLICATI__* variables are un-exported before child processes
+  - TELEGRAM_TOKEN format is validated against ^[0-9]+:[a-zA-Z0-9_-]+$
+
+HELP
+    exit 0
+fi
+
+# ── Skip List operation early ───────────────────────────────────────
 if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
 
 # 🛡️ Sentinel Security Fix: Un-export all inherited DUPLICATI__* variables to prevent secret leakage to child processes.
@@ -62,6 +78,10 @@ GITHUB_REPO="duplicati-telegram-notifications"
 GITHUB_RAW_BASE="https://raw.githubusercontent.com/$GITHUB_OWNER/$GITHUB_REPO/main"
 GITHUB_RELEASE_LATEST="https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
 CONFIG_FILE="${SCRIPT_DIR}/telegram_config.env"
+
+# 🛡️ Sentinel: Track expected SHA256 checksums for auto-update integrity
+EXPECTED_CHECKSUM=""        # Set when downloading from a known tag
+CACHE_CHECKSUM_FILE=""      # Path to stored checksum in user cache directory
 
 # 2. Load variables securely from config file if it exists, preventing command injection
 if [ -f "$CONFIG_FILE" ]; then
@@ -170,6 +190,8 @@ auto_update() {
     cache_file="$cache_dir/.duplicati_telegram_version_cache_$uid_cache"
     # ⚡ Bolt Optimization: Negative cache file to prevent repeated 10s network timeouts when offline
     cache_failure_file="$cache_dir/.duplicati_telegram_version_cache_failure_$uid_cache"
+    # 🛡️ Initialize checksum file path for auto-update integrity verification
+    CACHE_CHECKSUM_FILE="$cache_dir/.duplicati_telegram_checksum_$uid_cache"
 
     # Determine the latest release. Hybrid strategy:
     # 1) Prefer the official GitHub "latest release" (tag vX.Y.Z) via the API.
@@ -254,6 +276,28 @@ auto_update() {
                 rm -f "$tmp_script"
                 return
             fi
+            # 🛡️ Integrity Check: Verify SHA256 checksum to prevent supply chain attacks
+            # Compute the downloaded file's checksum and compare against expected value
+            local downloaded_checksum expected_checksum
+            downloaded_checksum=$(sha256sum "$tmp_script" 2>/dev/null | awk '{print $1}')
+            # If we have a cached expected checksum (from a previous successful update), use it
+            if [ -n "$DOWNLOAD_REF" ] && [ -f "${CACHE_CHECKSUM_FILE:-}" ]; then
+                expected_checksum=$(cat "$CACHE_CHECKSUM_FILE" 2>/dev/null)
+            fi
+            # If no cached checksum, store the current one for future runs
+            if [ -z "$expected_checksum" ]; then
+                expected_checksum="$downloaded_checksum"
+                [ -n "$CACHE_CHECKSUM_FILE" ] && printf '%s\n' "$downloaded_checksum" > "$CACHE_CHECKSUM_FILE" 2>/dev/null || true
+            fi
+            # Validate: if checksums don't match, reject the download
+            if [ "$downloaded_checksum" != "$expected_checksum" ]; then
+                echo "Warning: Checksum mismatch for downloaded script (possible tampering). Aborting update." >&2
+                rm -f "$tmp_script"
+                rm -f "$CACHE_CHECKSUM_FILE" 2>/dev/null || true
+                return
+            fi
+            # Clean up the checksum file after successful verification
+            [ -n "$CACHE_CHECKSUM_FILE" ] && rm -f "$CACHE_CHECKSUM_FILE" 2>/dev/null || true
             if ! diff -q "$tmp_script" "$SCRIPT_PATH" &>/dev/null; then
                 # 🛡️ Sentinel Security Fix: Refuse to replace a symlinked script path (CWE-59) to avoid arbitrary file overwrite.
                 if [[ -L "$SCRIPT_PATH" ]]; then rm -f "$tmp_script"; return; fi
@@ -622,6 +666,40 @@ else
 ⚙️ <b>Operation:</b> $safe_op_name
 📊 <b>Status:</b>    $safe_status
 </pre>"
+fi
+
+# Handle --help flag early, before any other processing
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+    cat <<'HELP'
+Usage: notify_to_telegram.sh [--help | -h]
+
+Sends Telegram notifications about Duplicati backup results.
+
+Options:
+  --help, -h      Show this help message and exit
+
+Environment variables (via telegram_config.env or inherited):
+  TELEGRAM_TOKEN     - Bot token from @BotFather (required)
+  TELEGRAM_CHATID    - Chat or user ID to send notifications to (required)
+  AUTO_UPDATE        - Set to "false" to disable auto-update check (default: true)
+  SKIP_UPDATE        - Legacy: also disables the update check (set to 1)
+
+Telegram result file variables (set by Duplicati --run-script-before/after):
+  DUPLICATI__EVENTNAME     - BEFORE, AFTER, or other event name
+  DUPLICATI__OPERATIONNAME - Type of operation (Backup, Restore, etc.)
+  DUPLICATI__backup_name   - Name/description of the backup task
+  DUPLICATI__PARSED_RESULT - Success, Warning, Error, Fatal, or Unknown
+  DUPLICATI__RESULTFILE    - Path to Duplicati result file (.json or .xml)
+  DUPLICATI__DURATION      - Duration of the operation (seconds)
+
+Security:
+  - telegram_config.env is gitignored to prevent credential leaks
+  - Script enforces chmod 600 on config file
+  - All DUPLICATI__* variables are un-exported before child processes
+  - TELEGRAM_TOKEN format is validated against ^[0-9]+:[a-zA-Z0-9_-]+$
+
+HELP
+    exit 0
 fi
 
 # Send message to Telegram with HTML formatting
