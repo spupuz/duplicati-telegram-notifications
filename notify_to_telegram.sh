@@ -1,6 +1,6 @@
 umask 077
 #!/bin/bash
-
+umask 077
 #########################################################################
 # Enhanced Script for Telegram Notifications about Duplicati Backup Results
 # Released "AS IS" without any warranty of any kind.
