@@ -287,7 +287,15 @@ auto_update() {
             # If no cached checksum, store the current one for future runs
             if [ -z "$expected_checksum" ]; then
                 expected_checksum="$downloaded_checksum"
-                [ -n "$CACHE_CHECKSUM_FILE" ] && printf '%s\n' "$downloaded_checksum" > "$CACHE_CHECKSUM_FILE" 2>/dev/null || true
+                if [ -n "$CACHE_CHECKSUM_FILE" ]; then
+                    local tmp_checksum
+                    # 🛡️ Sentinel Security Fix: Prevent Symlink Arbitrary File Overwrite (CWE-59) by writing to a secure temp file and moving it
+                    tmp_checksum=$(mktemp "${cache_dir}/.duplicati_telegram_checksum_tmp_${uid_cache}_XXXXXX")
+                    if [ -n "$tmp_checksum" ]; then
+                        printf '%s\n' "$downloaded_checksum" > "$tmp_checksum"
+                        mv -f "$tmp_checksum" "$CACHE_CHECKSUM_FILE" 2>/dev/null || rm -f "$tmp_checksum"
+                    fi
+                fi
             fi
             # Validate: if checksums don't match, reject the download
             if [ "$downloaded_checksum" != "$expected_checksum" ]; then
