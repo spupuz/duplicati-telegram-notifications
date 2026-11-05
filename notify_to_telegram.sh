@@ -46,6 +46,9 @@ if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
 # This ensures that even if secrets like passwords or API keys are inherited as exported variables
 # from the parent environment (e.g. Docker ENV), they are strictly confined to this script's
 # internal shell environment and not leaked to spawned processes like curl or grep via /proc/<pid>/environ.
+# 🛡️ Sentinel Security Fix: Explicitly un-export the iterator variable 'var' so it does not inherit the export attribute
+# from the parent environment, ensuring its value is not exposed to spawned processes like curl.
+export -n var
 for var in "${!DUPLICATI__@}"; do
     export -n "$var"
 done
