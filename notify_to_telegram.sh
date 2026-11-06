@@ -726,12 +726,8 @@ if [ "$CHAT_COUNT" -eq 1 ]; then
         
         # 🎨 Palette: concise, clear message with status feedback
         # Supports HTML parse_mode for rich formatting
-        if ! curl -s --connect-timeout 10 --max-time 30 --proto '=https' -K <(cat <<K
-url="$TELEGRAM_URL"
-data-urlencode="chat_id=$chat_id"
-data-urlencode="parse_mode=HTML"
-K
-) --data-urlencode "text@-" <<< "$payload" > /dev/null 2>&1; then
+        # ⚡ Bolt Optimization: Replaced external 'cat' binary in process substitution with native 'printf' built-in to eliminate fork/exec overhead.
+        if ! curl -s --connect-timeout 10 --max-time 30 --proto '=https' -K <(printf 'url="%s"\ndata-urlencode="chat_id=%s"\ndata-urlencode="parse_mode=HTML"\n' "$TELEGRAM_URL" "$chat_id") --data-urlencode "text@-" <<< "$payload" > /dev/null 2>&1; then
             echo "Error: failed to send to chat $chat_id" >&2
             return 1
         fi
@@ -745,12 +741,8 @@ else
         # 🛡️ Sentinel Security Fix: Un-export loop iterator to prevent leakage to child processes
         local chat_id; export -n chat_id
         for chat_id in "${TELEGRAM_TARGET_CHATS[@]}"; do
-            if ! curl -s --connect-timeout 10 --max-time 30 --proto '=https' -K <(cat <<K
-url="$TELEGRAM_URL"
-data-urlencode="chat_id=$chat_id"
-data-urlencode="parse_mode=HTML"
-K
-) --data-urlencode "text@-" <<< "$payload" > /dev/null 2>&1; then
+            # ⚡ Bolt Optimization: Replaced external 'cat' binary in process substitution with native 'printf' built-in to eliminate fork/exec overhead.
+            if ! curl -s --connect-timeout 10 --max-time 30 --proto '=https' -K <(printf 'url="%s"\ndata-urlencode="chat_id=%s"\ndata-urlencode="parse_mode=HTML"\n' "$TELEGRAM_URL" "$chat_id") --data-urlencode "text@-" <<< "$payload" > /dev/null 2>&1; then
                 echo "Error: failed to send to chat $chat_id" >&2
                 error=1
             fi
