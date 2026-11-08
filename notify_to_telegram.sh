@@ -403,32 +403,29 @@ function getFriendlyFileSize() {
     local size="$1"
     local __resultvar="$2"
     local val
-    case "$size" in
-        ''|*[!0-9]*)
-            size=0
-            ;;
-    esac
-    # 🛡️ Sentinel Security Fix: Parse as base 10 to prevent octal evaluation errors with leading zeros
-    size=$((10#$size))
-    # ⚡ Bolt Optimization: Replaced awk subshells with native bash integer arithmetic to prevent fork/exec overhead.
-    if [ "$size" -eq 0 ]; then
+
+    # ⚡ Bolt Optimization: Combined empty, zero, and non-numeric checks into a single fast-path glob
+    # and replaced POSIX test commands with native bash arithmetic evaluation for a measurable execution speedup.
+    if [[ -z "$size" || "$size" == 0 || "$size" == *[!0-9]* ]]; then
         val='0 B'
-    elif [ "$size" -ge 1099511627776 ]; then
-        val=$(( (size * 100 / 1099511627776 + 5) / 10 ))
-        val="$((val / 10)).$((val % 10)) TB"
-    elif [ "$size" -ge 1073741824 ]; then
-        val=$(( (size * 100 / 1073741824 + 5) / 10 ))
-        val="$((val / 10)).$((val % 10)) GB"
-    elif [ "$size" -ge 1048576 ]; then
-        val=$(( (size * 100 / 1048576 + 5) / 10 ))
-        val="$((val / 10)).$((val % 10)) MB"
-    elif [ "$size" -ge 1024 ]; then
-        val=$(( (size * 100 / 1024 + 5) / 10 ))
-        val="$((val / 10)).$((val % 10)) KB"
-    elif [ "$size" -gt 0 ]; then
-        val="${size} B"
     else
-        val='0 B'
+        # 🛡️ Sentinel Security Fix: Parse as base 10 to prevent octal evaluation errors with leading zeros
+        size=$((10#$size))
+        if (( size >= 1099511627776 )); then
+            val=$(( (size * 100 / 1099511627776 + 5) / 10 ))
+            val="$((val / 10)).$((val % 10)) TB"
+        elif (( size >= 1073741824 )); then
+            val=$(( (size * 100 / 1073741824 + 5) / 10 ))
+            val="$((val / 10)).$((val % 10)) GB"
+        elif (( size >= 1048576 )); then
+            val=$(( (size * 100 / 1048576 + 5) / 10 ))
+            val="$((val / 10)).$((val % 10)) MB"
+        elif (( size >= 1024 )); then
+            val=$(( (size * 100 / 1024 + 5) / 10 ))
+            val="$((val / 10)).$((val % 10)) KB"
+        else
+            val="${size} B"
+        fi
     fi
 
     if [ -n "$__resultvar" ]; then
