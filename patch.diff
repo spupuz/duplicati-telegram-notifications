@@ -1,0 +1,45 @@
+--- notify_to_telegram.sh
++++ notify_to_telegram.sh
+@@ -420,29 +420,31 @@
+     local size="$1"
+     local __resultvar="$2"
+     local val
+-    case "$size" in
+-        ''|*[!0-9]*)
+-            size=0
+-            ;;
+-    esac
++
++    # ⚡ Bolt Optimization: Use native bash parameter matching ([[ ]]) for validation
++    # and arithmetic conditionals ((( ))) for comparisons to avoid POSIX evaluation overhead.
++    if [[ -z "$size" || "$size" == *[!0-9]* ]]; then
++        size=0
++    fi
++
+     # 🛡️ Sentinel Security Fix: Parse as base 10 to prevent octal evaluation errors with leading zeros
+     size=$((10#$size))
+     # ⚡ Bolt Optimization: Replaced awk subshells with native bash integer arithmetic to prevent fork/exec overhead.
+-    if [ "$size" -eq 0 ]; then
++    if (( size == 0 )); then
+         val='0 B'
+-    elif [ "$size" -ge 1099511627776 ]; then
++    elif (( size >= 1099511627776 )); then
+         val=$(( (size * 100 / 1099511627776 + 5) / 10 ))
+         val="$((val / 10)).$((val % 10)) TB"
+-    elif [ "$size" -ge 1073741824 ]; then
++    elif (( size >= 1073741824 )); then
+         val=$(( (size * 100 / 1073741824 + 5) / 10 ))
+         val="$((val / 10)).$((val % 10)) GB"
+-    elif [ "$size" -ge 1048576 ]; then
++    elif (( size >= 1048576 )); then
+         val=$(( (size * 100 / 1048576 + 5) / 10 ))
+         val="$((val / 10)).$((val % 10)) MB"
+-    elif [ "$size" -ge 1024 ]; then
++    elif (( size >= 1024 )); then
+         val=$(( (size * 100 / 1024 + 5) / 10 ))
+         val="$((val / 10)).$((val % 10)) KB"
+-    elif [ "$size" -gt 0 ]; then
++    elif (( size > 0 )); then
+         val="${size} B"
+     else
+         val='0 B'
