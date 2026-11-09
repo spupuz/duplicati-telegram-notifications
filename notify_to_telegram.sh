@@ -53,6 +53,9 @@ for var in "${!DUPLICATI__@}"; do
     export -n "$var"
 done
 
+# 🛡️ Sentinel Security Fix: Explicitly un-export sensitive variables inherited from the environment early to prevent leakage to child processes.
+export -n TELEGRAM_TOKEN TELEGRAM_CHATID TELEGRAM_URL
+
 # 🛡️ Sentinel Security Fix: Truncate excessively long environment variables to prevent DoS via Telegram API length limits
 DUPLICATI__backup_name="${DUPLICATI__backup_name:0:1500}"
 DUPLICATI__OPERATIONNAME="${DUPLICATI__OPERATIONNAME:0:1500}"
@@ -142,8 +145,6 @@ for chatid in "${TELEGRAM_CHATIDS[@]}"; do
     fi
 done
 
-# 🛡️ Sentinel Security Fix: Un-export sensitive credentials to prevent leakage to child processes
-export -n TELEGRAM_TOKEN TELEGRAM_CHATID TELEGRAM_URL
 TELEGRAM_URL="https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage"
 
 # 🔨 Forge: Support multiple recipient chat IDs for broadcasting
