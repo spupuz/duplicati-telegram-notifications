@@ -53,9 +53,6 @@ for var in "${!DUPLICATI__@}"; do
     export -n "$var"
 done
 
-# 🛡️ Sentinel Security Fix: Explicitly un-export sensitive variables inherited from the environment early to prevent leakage to child processes.
-export -n TELEGRAM_TOKEN TELEGRAM_CHATID TELEGRAM_URL
-
 # 🛡️ Sentinel Security Fix: Truncate excessively long environment variables to prevent DoS via Telegram API length limits
 DUPLICATI__backup_name="${DUPLICATI__backup_name:0:1500}"
 DUPLICATI__OPERATIONNAME="${DUPLICATI__OPERATIONNAME:0:1500}"
@@ -77,7 +74,7 @@ SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
 SCRIPT_FILE="${BASH_SOURCE[0]##*/}"
 SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_FILE"
 
-SCRIPT_VERSION="1.17.0"
+SCRIPT_VERSION="1.16.4"
 GITHUB_OWNER="spupuz"
 GITHUB_REPO="duplicati-telegram-notifications"
 GITHUB_RAW_BASE="https://raw.githubusercontent.com/$GITHUB_OWNER/$GITHUB_REPO/main"
@@ -145,6 +142,8 @@ for chatid in "${TELEGRAM_CHATIDS[@]}"; do
     fi
 done
 
+# 🛡️ Sentinel Security Fix: Un-export sensitive credentials to prevent leakage to child processes
+export -n TELEGRAM_TOKEN TELEGRAM_CHATID TELEGRAM_URL
 TELEGRAM_URL="https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage"
 
 # 🔨 Forge: Support multiple recipient chat IDs for broadcasting
@@ -404,32 +403,29 @@ function getFriendlyFileSize() {
     local size="$1"
     local __resultvar="$2"
     local val
-    # ⚡ Bolt Optimization: Use native bash parameter matching ([[ ]]) for validation
-    # and arithmetic conditionals ((( ))) for comparisons to avoid POSIX evaluation overhead.
-    if [[ -z "$size" || "$size" == *[!0-9]* ]]; then
-        size=0
-    fi
-    # 🛡️ Sentinel Security Fix: Parse as base 10 to prevent octal evaluation errors with leading zeros
-    size=$((10#$size))
-    # ⚡ Bolt Optimization: Replaced awk subshells with native bash integer arithmetic to prevent fork/exec overhead.
-    if (( size == 0 )); then
+
+    # ⚡ Bolt Optimization: Combined empty, zero, and non-numeric checks into a single fast-path glob
+    # and replaced POSIX test commands with native bash arithmetic evaluation for a measurable execution speedup.
+    if [[ -z "$size" || "$size" == 0 || "$size" == *[!0-9]* ]]; then
         val='0 B'
-    elif (( size >= 1099511627776 )); then
-        val=$(( (size * 100 / 1099511627776 + 5) / 10 ))
-        val="$((val / 10)).$((val % 10)) TB"
-    elif (( size >= 1073741824 )); then
-        val=$(( (size * 100 / 1073741824 + 5) / 10 ))
-        val="$((val / 10)).$((val % 10)) GB"
-    elif (( size >= 1048576 )); then
-        val=$(( (size * 100 / 1048576 + 5) / 10 ))
-        val="$((val / 10)).$((val % 10)) MB"
-    elif (( size >= 1024 )); then
-        val=$(( (size * 100 / 1024 + 5) / 10 ))
-        val="$((val / 10)).$((val % 10)) KB"
-    elif (( size > 0 )); then
-        val="${size} B"
     else
-        val='0 B'
+        # 🛡️ Sentinel Security Fix: Parse as base 10 to prevent octal evaluation errors with leading zeros
+        size=$((10#$size))
+        if (( size >= 1099511627776 )); then
+            val=$(( (size * 100 / 1099511627776 + 5) / 10 ))
+            val="$((val / 10)).$((val % 10)) TB"
+        elif (( size >= 1073741824 )); then
+            val=$(( (size * 100 / 1073741824 + 5) / 10 ))
+            val="$((val / 10)).$((val % 10)) GB"
+        elif (( size >= 1048576 )); then
+            val=$(( (size * 100 / 1048576 + 5) / 10 ))
+            val="$((val / 10)).$((val % 10)) MB"
+        elif (( size >= 1024 )); then
+            val=$(( (size * 100 / 1024 + 5) / 10 ))
+            val="$((val / 10)).$((val % 10)) KB"
+        else
+            val="${size} B"
+        fi
     fi
 
     if [ -n "$__resultvar" ]; then
