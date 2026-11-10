@@ -126,7 +126,9 @@ fi
 
 # 🛡️ Sentinel Security Fix: Validate external credentials against strict allow-lists before interpolating
 # them into network URLs to prevent Server-Side Request Forgery (SSRF) and URL manipulation vulnerabilities.
-if [[ ! "$TELEGRAM_TOKEN" =~ ^[0-9]+:[a-zA-Z0-9_-]+$ ]]; then
+# ⚡ Bolt Optimization: Enable extglob and use native globbing over regex for faster string validation
+shopt -s extglob
+if [[ "$TELEGRAM_TOKEN" != +([0-9]):+([a-zA-Z0-9_-]) ]]; then
     echo "Error: TELEGRAM_TOKEN has an invalid format!" >&2
     exit 1
 fi
@@ -136,19 +138,19 @@ fi
 IFS=',' read -ra TELEGRAM_CHATIDS <<< "$TELEGRAM_CHATID"
 export -n chatid
 for chatid in "${TELEGRAM_CHATIDS[@]}"; do
-    if [[ ! "$chatid" =~ ^-?[0-9]+$ ]] && [[ ! "$chatid" =~ ^@[a-zA-Z0-9_]+$ ]]; then
+    if [[ "$chatid" != @(-|)+([0-9]) && "$chatid" != @+([a-zA-Z0-9_]) ]]; then
         echo "Error: TELEGRAM_CHATID '$chatid' has an invalid format!" >&2
         exit 1
     fi
 done
+shopt -u extglob
 
 # 🛡️ Sentinel Security Fix: Un-export sensitive credentials to prevent leakage to child processes
 export -n TELEGRAM_TOKEN TELEGRAM_CHATID TELEGRAM_URL
 TELEGRAM_URL="https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage"
 
 # 🔨 Forge: Support multiple recipient chat IDs for broadcasting
-# Split by comma to support broadcasting to multiple chats (user IDs or @channel names).
-IFS=',' read -ra TELEGRAM_CHATIDS <<< "$TELEGRAM_CHATID"
+# ⚡ Bolt Optimization: Removed redundant array split for TELEGRAM_CHATID as it was already split during validation
 CHAT_LIST_STR="${TELEGRAM_CHATID}"
 CHAT_COUNT=${#TELEGRAM_CHATIDS[@]}
 
