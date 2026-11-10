@@ -42,6 +42,11 @@ fi
 # ── Skip List operation early ───────────────────────────────────────
 if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
 
+# 🛡️ Sentinel Security Fix: Early un-export of inherited variables.
+# This prevents them from being passed to child processes (like chmod)
+# invoked before the configuration file is parsed.
+export -n TELEGRAM_TOKEN TELEGRAM_CHATID
+
 # 🛡️ Sentinel Security Fix: Un-export all inherited DUPLICATI__* variables to prevent secret leakage to child processes.
 # This ensures that even if secrets like passwords or API keys are inherited as exported variables
 # from the parent environment (e.g. Docker ENV), they are strictly confined to this script's
@@ -145,8 +150,8 @@ for chatid in "${TELEGRAM_CHATIDS[@]}"; do
 done
 shopt -u extglob
 
-# 🛡️ Sentinel Security Fix: Un-export sensitive credentials to prevent leakage to child processes
-export -n TELEGRAM_TOKEN TELEGRAM_CHATID TELEGRAM_URL
+# 🛡️ Sentinel Security Fix: Un-export derived sensitive credentials to prevent leakage to child processes
+export -n TELEGRAM_URL
 TELEGRAM_URL="https://api.telegram.org/bot$TELEGRAM_TOKEN/sendMessage"
 
 # 🔨 Forge: Support multiple recipient chat IDs for broadcasting
