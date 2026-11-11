@@ -121,6 +121,23 @@ SKIP_UPDATE=1
 
 ## 📦 Changelog
 
+### v1.17.3
+- 🛡️ **Sentinel**: [CRITICAL] Fix early variable leakage — inherited `DUPLICATI__*` and iterator variables are un-exported before child processes spawn, preventing secret exposure via `/proc/<pid>/environ`.
+
+### v1.17.2
+- ⚡ **Bolt**: Optimize format validation with native bash globbing (`[[ ]]` / `extglob`) instead of regex subshells.
+- 🛡️ **Sentinel**: Fix late un-export of variables to keep credentials confined to the script's shell environment.
+- Merge PRs #163, #164
+
+### v1.17.1
+- ⚡ **Bolt**: Optimize `getFriendlyFileSize` performance — native bash arithmetic replaces `awk` subshells.
+- Merge PRs #156–#159
+
+### v1.17.0
+- 🛡️ **Sentinel**: [HIGH] Fix early exposure of inherited variables — `TELEGRAM_TOKEN`/`TELEGRAM_CHATID` un-exported before any child process runs.
+- ⚡ **Bolt**: Optimize `getFriendlyFileSize` with native bash constructs.
+- Merge PRs #157–#161
+
 ### v1.15.5
 - **Ignore local agent skills**: add `.agents/` to `.gitignore` (same as `.opencode/` and `.kilo/`). Local `SKILL.md` files stay untracked; no code or version-logic changes.
 
