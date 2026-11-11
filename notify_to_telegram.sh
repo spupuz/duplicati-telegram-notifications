@@ -5,6 +5,22 @@ umask 077
 # Released "AS IS" without any warranty of any kind.
 #########################################################################
 
+# 🛡️ Sentinel Security Fix: Early un-export of inherited variables.
+# This prevents them from being passed to child processes (like cat)
+# invoked before the configuration file is parsed or help is displayed.
+export -n TELEGRAM_TOKEN TELEGRAM_CHATID
+
+# 🛡️ Sentinel Security Fix: Un-export all inherited DUPLICATI__* variables to prevent secret leakage to child processes.
+# This ensures that even if secrets like passwords or API keys are inherited as exported variables
+# from the parent environment (e.g. Docker ENV), they are strictly confined to this script's
+# internal shell environment and not leaked to spawned processes like curl or grep via /proc/<pid>/environ.
+# 🛡️ Sentinel Security Fix: Explicitly un-export the iterator variable 'var' so it does not inherit the export attribute
+# from the parent environment, ensuring its value is not exposed to spawned processes like curl.
+export -n var
+for var in "${!DUPLICATI__@}"; do
+    export -n "$var"
+done
+
 # ── 🛡️ Help flag: show usage and exit early ────────────────────────
 if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     cat <<'HELP'
@@ -42,21 +58,6 @@ fi
 # ── Skip List operation early ───────────────────────────────────────
 if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
 
-# 🛡️ Sentinel Security Fix: Early un-export of inherited variables.
-# This prevents them from being passed to child processes (like chmod)
-# invoked before the configuration file is parsed.
-export -n TELEGRAM_TOKEN TELEGRAM_CHATID
-
-# 🛡️ Sentinel Security Fix: Un-export all inherited DUPLICATI__* variables to prevent secret leakage to child processes.
-# This ensures that even if secrets like passwords or API keys are inherited as exported variables
-# from the parent environment (e.g. Docker ENV), they are strictly confined to this script's
-# internal shell environment and not leaked to spawned processes like curl or grep via /proc/<pid>/environ.
-# 🛡️ Sentinel Security Fix: Explicitly un-export the iterator variable 'var' so it does not inherit the export attribute
-# from the parent environment, ensuring its value is not exposed to spawned processes like curl.
-export -n var
-for var in "${!DUPLICATI__@}"; do
-    export -n "$var"
-done
 
 # 🛡️ Sentinel Security Fix: Truncate excessively long environment variables to prevent DoS via Telegram API length limits
 DUPLICATI__backup_name="${DUPLICATI__backup_name:0:1500}"
