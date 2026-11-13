@@ -144,7 +144,11 @@ fi
 IFS=',' read -ra TELEGRAM_CHATIDS <<< "$TELEGRAM_CHATID"
 export -n chatid
 for chatid in "${TELEGRAM_CHATIDS[@]}"; do
-    if [[ "$chatid" != @(-|)+([0-9]) && "$chatid" != @+([a-zA-Z0-9_]) ]]; then
+    # Trim whitespace from each chat ID
+    chatid="${chatid#"${chatid%%[![:space:]]*}"}"
+    chatid="${chatid%"${chatid##*[![:space:]]}"}"
+    # Validate: numeric ID (optional -) OR username (optional @ prefix, alphanumeric/underscore)
+    if [[ "$chatid" != @(-|)+([0-9]) && "$chatid" != @(@|)+([a-zA-Z0-9_]) ]]; then
         echo "Error: TELEGRAM_CHATID '$chatid' has an invalid format!" >&2
         exit 1
     fi
@@ -564,11 +568,13 @@ function getResultFatal () {
 # Function to handle restore operations
 function getOperationRestore () {
     local __resultvar="$1"
-    local s_restored s_deleted s_patched
+    local s_restored s_deleted s_patched s_folder_na
     getFriendlyFileSize "$RES_SizeOfRestoredFiles" s_restored
     # ⚡ Bolt Optimization: Use direct static variable assignment to avoid function overhead for deterministically static values
     s_deleted="0 B"
     s_patched="0 B"
+    # 🛡️ Sentinel: Folder sizes not provided by Duplicati; show N/A instead of misleading 0 B
+    s_folder_na="N/A"
 
     local safe_restored_files safe_deleted_files safe_patched_files safe_restored_folders safe_deleted_folders
     formatNumber "${RES_RestoredFiles:-0}" safe_restored_files
@@ -580,7 +586,7 @@ function getOperationRestore () {
     local output
     printf -v output "\n📂 <b>FILES:</b>         count       size\n📥 <b>Restored:</b>     %9s %10s\n🗑️ <b>Deleted:</b>      %9s %10s\n🛠️ <b>Patched:</b>      %9s %10s\n———————————————————————————————\n📁 <b>FOLDERS:</b>       count       size\n📂 <b>Restored:</b>     %9s %10s\n🗑️ <b>Deleted:</b>      %9s %10s" \
         "$safe_restored_files" "$s_restored" "$safe_deleted_files" "$s_deleted" "$safe_patched_files" "$s_patched" \
-        "$safe_restored_folders" "$s_deleted" "$safe_deleted_folders" "$s_deleted"
+        "$safe_restored_folders" "$s_folder_na" "$safe_deleted_folders" "$s_folder_na"
 
     # 🎨 Palette UX Enhancement: Add helpful CTA for Warning/Error states
     if [[ "$DUPLICATI__PARSED_RESULT" == "Warning" || "$DUPLICATI__PARSED_RESULT" == "Error" ]]; then
@@ -597,7 +603,7 @@ function getOperationRestore () {
 # Function to handle backup operations
 function getOperationBackup () {
     local __resultvar="$1"
-    local s_add s_del s_mod s_opn s_exm s_fadd s_fdel s_fmod
+    local s_add s_del s_mod s_opn s_exm s_fadd s_fdel s_fmod s_folder_na
     getFriendlyFileSize "$RES_SizeOfAddedFiles" s_add
     # ⚡ Bolt Optimization: Use direct static variable assignment to avoid function overhead for deterministically static values
     s_del="0 B"
@@ -605,9 +611,11 @@ function getOperationBackup () {
     getFriendlyFileSize "$RES_SizeOfOpenedFiles" s_opn
     getFriendlyFileSize "$RES_SizeOfExaminedFiles" s_exm
     # ⚡ Bolt Optimization: Use direct static variable assignment to avoid function overhead for deterministically static values
-    s_fadd="0 B"
-    s_fdel="0 B"
-    s_fmod="0 B"
+    # 🛡️ Sentinel: Folder sizes not provided by Duplicati; show N/A instead of misleading 0 B
+    s_fadd="N/A"
+    s_fdel="N/A"
+    s_fmod="N/A"
+    s_folder_na="N/A"
 
     local safe_added_files safe_deleted_files safe_modified_files safe_opened_files safe_examined_files
     local safe_added_folders safe_deleted_folders safe_modified_folders
