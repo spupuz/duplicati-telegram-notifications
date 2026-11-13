@@ -505,7 +505,7 @@ function getResultLine () {
     escapeHTML "${DUPLICATI__OPERATIONNAME:-Unknown Operation}" safe_op_name
     escapeHTML "${CURRENT_STATUS:-Unknown Status}" safe_status
     escapeHTML "${DUPLICATI__PARSED_RESULT:-Unknown Result}" safe_result
-    escapeHTML "$Duration" safe_duration
+    escapeHTML "${DUPLICATI__DURATION:-00:00:00}" safe_duration
 
     # ⚡ Bolt Optimization: Pre-formatted string to avoid runtime loop trimming.
     # 🎨 Palette UX Enhancement: Dynamic header icon for better glanceability.
