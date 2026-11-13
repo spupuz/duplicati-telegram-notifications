@@ -689,8 +689,10 @@ fi
 
 # Help is already handled at the top of the script; continue normal flow.
 # Send message to Telegram with HTML formatting
-MESSAGE+="
+if [ "$DUPLICATI__EVENTNAME" == "AFTER" ]; then
+    MESSAGE+="
 </pre>"
+fi
 
 # 🎨 Palette UX Enhancement: Add clickable tags for easy filtering in Telegram
 raw_op="${DUPLICATI__OPERATIONNAME:-UnknownOperation}"
