@@ -4,3 +4,7 @@ telegram_config.env
 .jules/
 .kilo/
 .opencode/
+
+# Local development artifacts
+notify_to_telegram.sh.orig
+patch.diff

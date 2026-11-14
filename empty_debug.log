@@ -1,0 +1,221 @@
++ umask 077
++ export -n TELEGRAM_TOKEN TELEGRAM_CHATID
++ export -n var
++ for var in "${!DUPLICATI__@}"
++ export -n DUPLICATI__EVENTNAME
++ for var in "${!DUPLICATI__@}"
++ export -n DUPLICATI__PARSED_RESULT
++ for var in "${!DUPLICATI__@}"
++ export -n DUPLICATI__RESULTFILE
++ '[' '' = --help ']'
++ '[' '' = -h ']'
++ '[' '' == List ']'
++ DUPLICATI__backup_name=
++ DUPLICATI__OPERATIONNAME=
++ DUPLICATI__EVENTNAME=AFTER
++ DUPLICATI__PARSED_RESULT=Fatal
++ command -v curl
++ SCRIPT_DIR=notify_to_telegram.sh
++ [[ notify_to_telegram.sh == \n\o\t\i\f\y\_\t\o\_\t\e\l\e\g\r\a\m\.\s\h ]]
++ SCRIPT_DIR=.
+++ cd .
+++ pwd
++ SCRIPT_DIR=/tmp/hermes-clone/duplicati-telegram-notifications
++ SCRIPT_FILE=notify_to_telegram.sh
++ SCRIPT_PATH=/tmp/hermes-clone/duplicati-telegram-notifications/notify_to_telegram.sh
++ SCRIPT_VERSION=1.17.4
++ GITHUB_OWNER=spupuz
++ GITHUB_REPO=duplicati-telegram-notifications
++ GITHUB_RAW_BASE=https://raw.githubusercontent.com/spupuz/duplicati-telegram-notifications/main
++ GITHUB_RELEASE_LATEST=https://github.com/spupuz/duplicati-telegram-notifications/releases/latest
++ CONFIG_FILE=/tmp/hermes-clone/duplicati-telegram-notifications/telegram_config.env
++ EXPECTED_CHECKSUM=
++ CACHE_CHECKSUM_FILE=
++ '[' -f /tmp/hermes-clone/duplicati-telegram-notifications/telegram_config.env ']'
++ '[' -z 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11 ']'
++ '[' -z 123456 ']'
++ shopt -s extglob
++ [[ 123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11 != +([0-9]):+([a-zA-Z0-9_-]) ]]
++ IFS=,
++ read -ra TELEGRAM_CHATIDS
++ export -n chatid
++ for chatid in "${TELEGRAM_CHATIDS[@]}"
++ [[ 123456 != @(-|)+([0-9]) ]]
++ shopt -u extglob
++ export -n TELEGRAM_URL
++ TELEGRAM_URL=https://api.telegram.org/bot123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11/sendMessage
++ CHAT_LIST_STR=123456
++ CHAT_COUNT=1
++ export -n TELEGRAM_CHAT_COUNT TELEGRAM_CHAT_LIST
++ TELEGRAM_CHAT_COUNT=1
++ TELEGRAM_CHAT_LIST=123456
++ PALETTE_BROADCAST_PREAMBLE='📣 Broadcasting to 1 chat(s): 123456'
++ PALETTE_BROADCAST_POSTAMBLE='📤 Message sent to all 1 recipients'
++ export -n TELEGRAM_TARGET_CHATID TELEGRAM_TARGET_CHATS
++ '[' 1 -eq 1 ']'
++ TARGET_CHATID=123456
++ TELEGRAM_TARGET_CHATID=123456
++ echo '📣 Broadcasting to 1 chat(s): 123456'
+📣 Broadcasting to 1 chat(s): 123456
++ '[' true = true ']'
++ '[' -z 1 ']'
++ '[' AFTER == AFTER ']'
++ parseResultFile
++ '[' -f empty_dummy_result.txt ']'
++ return
++ Duration=
++ '[' -z '' ']'
++ Duration=00:00:00
++ getResultLine MESSAGE
++ local __resultvar=MESSAGE
++ case "$DUPLICATI__EVENTNAME" in
++ CURRENT_STATUS=Finished
++ case "$DUPLICATI__PARSED_RESULT" in
++ RESULT_ICON=💥
++ local safe_backup_name safe_op_name safe_status safe_result safe_duration
++ escapeHTML 'Unknown Task' safe_backup_name
++ local 'val=Unknown Task'
++ local __resultvar=safe_backup_name
++ [[ Unknown Task == *[\<\>\&]* ]]
++ '[' -n safe_backup_name ']'
++ printf -v safe_backup_name %s 'Unknown Task'
++ escapeHTML 'Unknown Operation' safe_op_name
++ local 'val=Unknown Operation'
++ local __resultvar=safe_op_name
++ [[ Unknown Operation == *[\<\>\&]* ]]
++ '[' -n safe_op_name ']'
++ printf -v safe_op_name %s 'Unknown Operation'
++ escapeHTML Finished safe_status
++ local val=Finished
++ local __resultvar=safe_status
++ [[ Finished == *[\<\>\&]* ]]
++ '[' -n safe_status ']'
++ printf -v safe_status %s Finished
++ escapeHTML Fatal safe_result
++ local val=Fatal
++ local __resultvar=safe_result
++ [[ Fatal == *[\<\>\&]* ]]
++ '[' -n safe_result ']'
++ printf -v safe_result %s Fatal
++ escapeHTML 00:00:00 safe_duration
++ local val=00:00:00
++ local __resultvar=safe_duration
++ [[ 00:00:00 == *[\<\>\&]* ]]
++ '[' -n safe_duration ']'
++ printf -v safe_duration %s 00:00:00
++ local 'output=<b>💥 DUPLICATI BACKUP</b>
+<pre>
+———————————————————————————————
+📋 <b>Task:</b>      Unknown Task
+⚙️ <b>Operation:</b> Unknown Operation
+📊 <b>Status:</b>    Finished
+💥 <b>Result:</b>    Fatal
+———————————————————————————————
+⏱ <b>Duration:</b>  00:00:00
+———————————————————————————————'
++ '[' -n MESSAGE ']'
++ printf -v MESSAGE %s '<b>💥 DUPLICATI BACKUP</b>
+<pre>
+———————————————————————————————
+📋 <b>Task:</b>      Unknown Task
+⚙️ <b>Operation:</b> Unknown Operation
+📊 <b>Status:</b>    Finished
+💥 <b>Result:</b>    Fatal
+———————————————————————————————
+⏱ <b>Duration:</b>  00:00:00
+———————————————————————————————'
++ TEMP_MSG=
++ '[' '' == Restore ']'
++ '[' Fatal == Fatal ']'
++ getResultFatal TEMP_MSG
++ local __resultvar=TEMP_MSG
++ local safe_failed safe_details
++ local 'failed_text=Unknown Error'
++ local 'details_text=No additional details provided.'
++ local 'truncated_failed=Unknown Error'
++ local 'truncated_details=No additional details provided.'
++ [[ 13 -gt 1500 ]]
++ [[ 31 -gt 1500 ]]
++ escapeHTML 'Unknown Error' safe_failed
++ local 'val=Unknown Error'
++ local __resultvar=safe_failed
++ [[ Unknown Error == *[\<\>\&]* ]]
++ '[' -n safe_failed ']'
++ printf -v safe_failed %s 'Unknown Error'
++ escapeHTML 'No additional details provided.' safe_details
++ local 'val=No additional details provided.'
++ local __resultvar=safe_details
++ [[ No additional details provided. == *[\<\>\&]* ]]
++ '[' -n safe_details ']'
++ printf -v safe_details %s 'No additional details provided.'
++ local 'output=❗ <b>Error:</b> Unknown Error
+📋 <b>Details:</b> No additional details provided.
+———————————————————————————————
+💡 <b>Action:</b> Review the Duplicati web interface or host logs for complete diagnostic details.'
++ '[' -n TEMP_MSG ']'
++ printf -v TEMP_MSG %s '❗ <b>Error:</b> Unknown Error
+📋 <b>Details:</b> No additional details provided.
+———————————————————————————————
+💡 <b>Action:</b> Review the Duplicati web interface or host logs for complete diagnostic details.'
++ MESSAGE+='❗ <b>Error:</b> Unknown Error
+📋 <b>Details:</b> No additional details provided.
+———————————————————————————————
+💡 <b>Action:</b> Review the Duplicati web interface or host logs for complete diagnostic details.'
++ MESSAGE+='
+</pre>'
++ raw_op=UnknownOperation
++ clean_op=UnknownOperation
++ raw_result=Fatal
++ clean_result=Fatal
++ tags='#Duplicati #UnknownOperation #Fatal'
++ MESSAGE+='
+#Duplicati #UnknownOperation #Fatal
+'
++ '[' -n '' ']'
++ escapeHTML 1.17.4 safe_script_version
++ local val=1.17.4
++ local __resultvar=safe_script_version
++ [[ 1.17.4 == *[\<\>\&]* ]]
++ '[' -n safe_script_version ']'
++ printf -v safe_script_version %s 1.17.4
++ MESSAGE+='⚙️ <b>Script version:</b> v1.17.4'
++ export -n MESSAGE Duration TEMP_MSG CURRENT_STATUS safe_backup_name safe_op_name safe_status header_icon raw_op raw_result RESULT_ICON clean_op clean_result tags safe_updated_version safe_script_version
++ '[' 1 -eq 1 ']'
++ send_to_telegram '<b>💥 DUPLICATI BACKUP</b>
+<pre>
+———————————————————————————————
+📋 <b>Task:</b>      Unknown Task
+⚙️ <b>Operation:</b> Unknown Operation
+📊 <b>Status:</b>    Finished
+💥 <b>Result:</b>    Fatal
+———————————————————————————————
+⏱ <b>Duration:</b>  00:00:00
+———————————————————————————————❗ <b>Error:</b> Unknown Error
+📋 <b>Details:</b> No additional details provided.
+———————————————————————————————
+💡 <b>Action:</b> Review the Duplicati web interface or host logs for complete diagnostic details.
+</pre>
+#Duplicati #UnknownOperation #Fatal
+⚙️ <b>Script version:</b> v1.17.4'
++ local chat_id=123456
++ local 'payload=<b>💥 DUPLICATI BACKUP</b>
+<pre>
+———————————————————————————————
+📋 <b>Task:</b>      Unknown Task
+⚙️ <b>Operation:</b> Unknown Operation
+📊 <b>Status:</b>    Finished
+💥 <b>Result:</b>    Fatal
+———————————————————————————————
+⏱ <b>Duration:</b>  00:00:00
+———————————————————————————————❗ <b>Error:</b> Unknown Error
+📋 <b>Details:</b> No additional details provided.
+———————————————————————————————
+💡 <b>Action:</b> Review the Duplicati web interface or host logs for complete diagnostic details.
+</pre>
+#Duplicati #UnknownOperation #Fatal
+⚙️ <b>Script version:</b> v1.17.4'
+++ printf 'url="%s"\ndata-urlencode="chat_id=%s"\ndata-urlencode="parse_mode=HTML"\n' https://api.telegram.org/bot123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11/sendMessage 123456
++ curl -s --connect-timeout 10 --max-time 30 --proto =https -K /dev/fd/63 --data-urlencode text@-
++ echo '📤 Message sent to all 1 recipients'
+📤 Message sent to all 1 recipients
++ exit 0
