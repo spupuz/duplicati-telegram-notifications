@@ -380,6 +380,10 @@ function formatNumber() {
 
     # ⚡ Bolt Optimization: Fast path early return for 1-3 digit numbers to avoid
     # expensive native bash string substitutions and formatting loops overhead.
+    # But security comes first: strip non-digits before the fast path check.
+    formatted="${formatted//[!0-9]/}"
+    [ -z "$formatted" ] && formatted=0
+
     if [[ "$formatted" == [0-9] ]] || [[ "$formatted" == [0-9][0-9] ]] || [[ "$formatted" == [0-9][0-9][0-9] ]]; then
         if [ -n "$__resultvar" ]; then
             printf -v "$__resultvar" "%s" "$formatted"
@@ -389,8 +393,6 @@ function formatNumber() {
         return
     fi
 
-    formatted="${formatted//[!0-9]/}"
-    [ -z "$formatted" ] && formatted=0
     # ⚡ Bolt Optimization: Use pure bash string slicing instead of expensive regex loop to format thousands separator.
     local len=${#formatted}
     local out=""
@@ -459,7 +461,6 @@ function parseResultFile () {
     # 🛡️ Sentinel Security Fix: Prevent Information Disclosure (CWE-200) via /proc/<pid>/environ in child processes.
     # Explicitly un-export iterator variables 'key' and 'val' before reading the result file to guarantee
     # they don't leak into spawned processes if they inherited the export attribute from the environment.
-    export -n key val
     while IFS=':' read -r key val || [ -n "$key" ]; do
         [[ -z "$val" ]] && continue
         key="${key//[[:space:]]/}"
