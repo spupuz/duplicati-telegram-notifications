@@ -728,7 +728,7 @@ if [ "$CHAT_COUNT" -eq 1 ]; then
     send_to_telegram() {
         local chat_id="$TELEGRAM_TARGET_CHATID"
         local payload="${1:-}"
-        
+
         # 🎨 Palette: concise, clear message with status feedback
         # Supports HTML parse_mode for rich formatting
         # ⚡ Bolt Optimization: Replaced external 'cat' binary in process substitution with native 'printf' built-in to eliminate fork/exec overhead.
@@ -752,7 +752,7 @@ else
                 error=1
             fi
         done
-        
+
         if [ "$error" -eq 0 ]; then
             echo "$PALETTE_BROADCAST_POSTAMBLE"
         else
