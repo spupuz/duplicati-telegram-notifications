@@ -208,14 +208,17 @@ auto_update() {
     # 2) Fall back to version.txt on the main branch if the API fails (e.g.
     #    unauthenticated rate limit, network, or no release published yet).
     # The result is cached for 24 hours to avoid a blocking request on every run.
-    if [ -f "$cache_file" ] && [ -n "$(find "$cache_file" -mmin -1440 2>/dev/null)" ]; then
+    # ⚡ Bolt Optimization: Avoid spawning external `find` for cache-age checks by comparing file mtime with bash time builtins.
+    local _now _cache_mtime
+    printf -v _now '%(%s)T' -1 2>/dev/null || _now=$(date +%s)
+    if [ -f "$cache_file" ] && _cache_mtime=$(stat -c %Y "$cache_file" 2>/dev/null) && [ $((_now - _cache_mtime)) -lt 86400 ]; then
         IFS= read -r latest_version < "$cache_file"
         # 🛡️ Sentinel Security Fix: Validate cached version to prevent cache poisoning/path traversal
         if [[ "$latest_version" == *[!a-zA-Z0-9.-]* ]]; then
             return
         fi
     # If a previous network check failed recently (e.g., within 60 mins), skip the check to avoid blocking
-    elif [ -f "$cache_failure_file" ] && [ -n "$(find "$cache_failure_file" -mmin -60 2>/dev/null)" ]; then
+    elif [ -f "$cache_failure_file" ] && _cache_mtime=$(stat -c %Y "$cache_failure_file" 2>/dev/null) && [ $((_now - _cache_mtime)) -lt 3600 ]; then
         return
     else
         # ⚡ Bolt Optimization: Use HTTP HEAD request to the GitHub web release redirect instead of fetching
