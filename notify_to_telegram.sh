@@ -650,13 +650,18 @@ if [ "$DUPLICATI__EVENTNAME" == "AFTER" ]; then
     [ -z "$Duration" ] && Duration="00:00:00"
     getResultLine MESSAGE
     TEMP_MSG=""
+    # 🎨 Palette UX Enhancement: Show fatal error details for all operations,
+    # including Restore (previously the elif only caught non-Restore Fatals,
+    # so a fatal restore showed stats but not the actual error message).
     if [ "$DUPLICATI__OPERATIONNAME" == "Restore" ]; then
         getOperationRestore TEMP_MSG
         MESSAGE+="$TEMP_MSG"
-    elif [ "$DUPLICATI__PARSED_RESULT" == "Fatal" ]; then
+    fi
+
+    if [ "$DUPLICATI__PARSED_RESULT" == "Fatal" ]; then
         getResultFatal TEMP_MSG
         MESSAGE+="$TEMP_MSG"
-    else
+    elif [ "$DUPLICATI__OPERATIONNAME" != "Restore" ]; then
         getOperationBackup TEMP_MSG
         MESSAGE+="$TEMP_MSG"
     fi
