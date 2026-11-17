@@ -88,7 +88,6 @@ GITHUB_RELEASE_LATEST="https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases/la
 CONFIG_FILE="${SCRIPT_DIR}/telegram_config.env"
 
 # 🛡️ Sentinel: Track expected SHA256 checksums for auto-update integrity
-EXPECTED_CHECKSUM=""        # Set when downloading from a known tag
 CACHE_CHECKSUM_FILE=""      # Path to stored checksum in user cache directory
 
 # 2. Load variables securely from config file if it exists, preventing command injection
