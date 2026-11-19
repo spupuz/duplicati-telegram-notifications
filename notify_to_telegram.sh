@@ -92,6 +92,11 @@ CACHE_CHECKSUM_FILE=""      # Path to stored checksum in user cache directory
 
 # 2. Load variables securely from config file if it exists, preventing command injection
 if [ -f "$CONFIG_FILE" ]; then
+    # 🛡️ Sentinel Security Fix: Refuse to load a symlinked config file (CWE-59) to prevent arbitrary file read/overwrite.
+    if [[ -L "$CONFIG_FILE" ]]; then
+        echo "Error: CONFIG_FILE must not be a symlink: $CONFIG_FILE" >&2
+        exit 1
+    fi
     # 🛡️ Sentinel Security Fix: Enforce strict permissions on the config file to prevent Information Disclosure
     chmod 600 "$CONFIG_FILE" 2>/dev/null || true
 
