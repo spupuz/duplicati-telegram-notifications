@@ -452,6 +452,11 @@ function getFriendlyFileSize() {
 
 # Securely parse the result file to avoid command injection
 function parseResultFile () {
+    # 🛡️ Sentinel Security Fix: Refuse to read a symlinked result file (CWE-59) to prevent arbitrary file read.
+    if [[ -L "$DUPLICATI__RESULTFILE" ]]; then
+        echo "Error: DUPLICATI__RESULTFILE must not be a symlink: $DUPLICATI__RESULTFILE" >&2
+        return
+    fi
     [ -f "$DUPLICATI__RESULTFILE" ] || return
     # 🛡️ Sentinel Security Fix: Explicitly unset any pre-existing variables matching the RES_ prefix
     # before parsing. This prevents inherited environment variables from manipulating the script logic
