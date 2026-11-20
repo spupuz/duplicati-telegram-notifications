@@ -197,6 +197,9 @@ fi
 # Auto-update: check GitHub for a newer version and replace itself
 auto_update() {
     local latest_version tmp_script cache_file cache_failure_file first_line latest_tag dl_url DOWNLOAD_REF uid_cache
+    # 🛡️ Sentinel Security Fix: ensure temporary downloaded script is removed on exit/signal
+    # to avoid leaving attacker-influenced partial files in the cache directory.
+    trap 'rm -f "${tmp_script:-}" 2>/dev/null || true' EXIT HUP INT TERM
     uid_cache="${EUID:-$(id -u)}"
     local cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/duplicati-telegram"
     # ⚡ Bolt Optimization: Use POSIX-compliant short-circuit `[ -d ]` to avoid fork/exec overhead for `mkdir -p` when cache exists
