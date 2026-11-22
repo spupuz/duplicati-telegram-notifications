@@ -80,7 +80,7 @@ SCRIPT_DIR="$(cd "$SCRIPT_DIR" && pwd)"
 SCRIPT_FILE="${BASH_SOURCE[0]##*/}"
 SCRIPT_PATH="$SCRIPT_DIR/$SCRIPT_FILE"
 
-SCRIPT_VERSION="1.18.3"
+SCRIPT_VERSION="1.18.4"
 GITHUB_OWNER="spupuz"
 GITHUB_REPO="duplicati-telegram-notifications"
 GITHUB_RAW_BASE="https://raw.githubusercontent.com/$GITHUB_OWNER/$GITHUB_REPO/main"
@@ -302,7 +302,7 @@ auto_update() {
             downloaded_checksum=$(sha256sum "$tmp_script" 2>/dev/null)
             downloaded_checksum="${downloaded_checksum%% *}"
             # If we have a cached expected checksum (from a previous successful update), use it
-            if [ -n "$DOWNLOAD_REF" ] && [ -f "${CACHE_CHECKSUM_FILE:-}" ] && [ ! -L "${CACHE_CHECKSUM_FILE:-}" ]; then
+            if [ -n "$DOWNLOAD_REF" ] && [ -f "${CACHE_CHECKSUM_FILE:-}" ] && [[ ! -L "${CACHE_CHECKSUM_FILE:-}" ]]; then
                 # ⚡ Bolt Optimization: Replace `$(cat ...)` with native bash `read` to avoid
                 # the fork/exec overhead of spawning a subshell and external binary for a single line file.
                 # Expected Impact: Measurable speedup (~90%) in local micro-benchmarks for this read operation.
@@ -311,7 +311,7 @@ auto_update() {
             # If no cached checksum, store the current one for future runs
             if [ -z "$expected_checksum" ]; then
                 expected_checksum="$downloaded_checksum"
-                if [ -n "$CACHE_CHECKSUM_FILE" ]; then
+                if [ -n "$CACHE_CHECKSUM_FILE" ] && [[ ! -L "$CACHE_CHECKSUM_FILE" ]]; then
                     local tmp_checksum
                     # 🛡️ Sentinel Security Fix: Prevent Symlink Arbitrary File Overwrite (CWE-59) by writing to a secure temp file and moving it
                     tmp_checksum=$(mktemp "${cache_dir}/.duplicati_telegram_checksum_tmp_${uid_cache}_XXXXXX")
