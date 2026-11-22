@@ -220,6 +220,34 @@ else
     run_test "AUTO_UPDATE=false no syntax error" "false"
 fi
 
+# ── Test 11: Newline injection in user-controlled fields ────────────
+echo ""
+echo "🧪 Test 11: CR/LF in backup name must not break message layout"
+
+export TELEGRAM_TOKEN="123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11"
+export TELEGRAM_CHATID="123456"
+export AUTO_UPDATE="false"
+export SKIP_UPDATE=1
+export DUPLICATI__EVENTNAME="BEFORE"
+export DUPLICATI__OPERATIONNAME="Backup"
+export DUPLICATI__PARSED_RESULT="Failed"
+# Attacker-controlled backup name with embedded newline + forged result line
+export DUPLICATI__backup_name=$'Legit Backup\n📊 <b>Result:</b>    S U C C E S S'
+
+set +e
+output=$(bash -x notify_to_telegram.sh 2>&1)
+set -e
+
+# The message must keep the forged row on the SAME line as the task name
+# (i.e. the newline is neutralized) and must not emit a standalone fake
+# "📊 Result: S U C C E S S" row inside the <pre> block.
+if echo "$output" | grep -q 'Legit Backup.*S U C C E S S' \
+   && ! echo "$output" | grep -Pzo "📊\s+<b>Result:</b>    S U C C E S S\n" >/dev/null 2>&1; then
+    run_test "Newline in backup name neutralized" "true"
+else
+    run_test "Newline in backup name neutralized" "false"
+fi
+
 # ── Summary ────────────────────────────────────────────────────────────
 echo ""
 echo "========================================"

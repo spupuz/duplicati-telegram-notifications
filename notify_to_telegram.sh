@@ -373,6 +373,19 @@ function escapeHTML() {
         val="${val//>/&gt;}"
     fi
 
+    # 🛡️ Sentinel Security Fix: Neutralize embedded CR/LF in escaped fields.
+    # Escaped values are interpolated inside <pre> blocks whose layout (separator
+    # lines, column alignment) is fixed by the template. A CR or LF inside a
+    # user-controlled field (e.g. DUPLICATI__backup_name, DUPLICATI__RESULTFILE,
+    # DUPLICATI__PARSED_RESULT) lets an attacker break out of its line and forge
+    # HTML-formatted rows (e.g. a fake "📊 Result: SUCCESS") that Telegram renders
+    # as genuine content. Replacing CR/LF with a visible, inert marker keeps the
+    # value on one line and preserves the notification's visual integrity.
+    if [[ "$val" == *[$'\r\n']* ]]; then
+        val="${val//$'\r'/ }"
+        val="${val//$'\n'/ }"
+    fi
+
     if [ -n "$__resultvar" ]; then
         printf -v "$__resultvar" "%s" "$val"
     else
