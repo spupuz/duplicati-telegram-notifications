@@ -218,14 +218,14 @@ auto_update() {
     # ⚡ Bolt Optimization: Avoid spawning external `find` for cache-age checks by comparing file mtime with bash time builtins.
     local _now _cache_mtime
     printf -v _now '%(%s)T' -1 2>/dev/null || _now=$(date +%s)
-    if [ -f "$cache_file" ] && _cache_mtime=$(stat -c %Y "$cache_file" 2>/dev/null) && [ $((_now - _cache_mtime)) -lt 86400 ]; then
+    if [ -f "$cache_file" ] && [ ! -L "$cache_file" ] && _cache_mtime=$(stat -c %Y "$cache_file" 2>/dev/null) && [ $((_now - _cache_mtime)) -lt 86400 ]; then
         IFS= read -r latest_version < "$cache_file"
         # 🛡️ Sentinel Security Fix: Validate cached version to prevent cache poisoning/path traversal
         if [[ "$latest_version" == *[!a-zA-Z0-9.-]* ]]; then
             return
         fi
     # If a previous network check failed recently (e.g., within 60 mins), skip the check to avoid blocking
-    elif [ -f "$cache_failure_file" ] && _cache_mtime=$(stat -c %Y "$cache_failure_file" 2>/dev/null) && [ $((_now - _cache_mtime)) -lt 3600 ]; then
+    elif [ -f "$cache_failure_file" ] && [ ! -L "$cache_failure_file" ] && _cache_mtime=$(stat -c %Y "$cache_failure_file" 2>/dev/null) && [ $((_now - _cache_mtime)) -lt 3600 ]; then
         return
     else
         # ⚡ Bolt Optimization: Use HTTP HEAD request to the GitHub web release redirect instead of fetching
@@ -302,7 +302,7 @@ auto_update() {
             downloaded_checksum=$(sha256sum "$tmp_script" 2>/dev/null)
             downloaded_checksum="${downloaded_checksum%% *}"
             # If we have a cached expected checksum (from a previous successful update), use it
-            if [ -n "$DOWNLOAD_REF" ] && [ -f "${CACHE_CHECKSUM_FILE:-}" ]; then
+            if [ -n "$DOWNLOAD_REF" ] && [ -f "${CACHE_CHECKSUM_FILE:-}" ] && [ ! -L "${CACHE_CHECKSUM_FILE:-}" ]; then
                 # ⚡ Bolt Optimization: Replace `$(cat ...)` with native bash `read` to avoid
                 # the fork/exec overhead of spawning a subshell and external binary for a single line file.
                 # Expected Impact: Measurable speedup (~90%) in local micro-benchmarks for this read operation.
