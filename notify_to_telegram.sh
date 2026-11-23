@@ -24,18 +24,21 @@ done
 # ── 🛡️ Help flag: show usage and exit early ────────────────────────
 if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     cat <<'HELP'
-Usage: notify_to_telegram.sh [--help | -h]
+Usage: notify_to_telegram.sh [--help | -h] [--version | -v]
 
 Sends Telegram notifications about Duplicati backup results.
 
 Options:
   --help, -h      Show this help message and exit
+  --version, -v   Show the script version and exit
 
 Environment variables (via telegram_config.env or inherited):
   TELEGRAM_TOKEN     - Bot token from @BotFather (required)
   TELEGRAM_CHATID    - Chat or user ID to send notifications to (required)
   AUTO_UPDATE        - Set to "false" to disable auto-update check (default: true)
   SKIP_UPDATE        - Legacy: also disables the update check (set to 1)
+  TELEGRAM_RETRY_MAX   - Max retry attempts per send (default: 3)
+  TELEGRAM_RETRY_BASE_DELAY - Base sleep seconds between retries (default: 1)
 
 Telegram result file variables (set by Duplicati --run-script-before/after):
   DUPLICATI__EVENTNAME     - BEFORE, AFTER, or other event name
@@ -55,7 +58,7 @@ HELP
     exit 0
 fi
 
-# ── Skip List operation early ───────────────────────────────────────
+# ── Skip List operation early ────────────────────────────────────────────
 if [ "$DUPLICATI__OPERATIONNAME" == "List" ]; then exit 0; fi
 
 
@@ -91,6 +94,12 @@ CONFIG_FILE="${SCRIPT_DIR}/telegram_config.env"
 EXPECTED_CHECKSUM=""        # Set when downloading from a known tag
 CACHE_CHECKSUM_FILE=""      # Path to stored checksum in user cache directory
 
+# ── Version flag: show version and exit early ────────────────────────────
+if [ "$1" = "--version" ] || [ "$1" = "-v" ]; then
+    echo "notify_to_telegram.sh v${SCRIPT_VERSION}"
+    exit 0
+fi
+
 # 2. Load variables securely from config file if it exists, preventing command injection
 if [ -f "$CONFIG_FILE" ]; then
     # 🛡️ Sentinel Security Fix: Enforce strict permissions on the config file to prevent Information Disclosure
@@ -116,7 +125,7 @@ if [ -f "$CONFIG_FILE" ]; then
         val="${val%\'}"
 
         # Only allow specific configuration variables to prevent environment injection (e.g. overwriting PATH)
-        if [[ "$key" == "TELEGRAM_TOKEN" || "$key" == "TELEGRAM_CHATID" || "$key" == "AUTO_UPDATE" || "$key" == "SKIP_UPDATE" ]]; then
+        if [[ "$key" == "TELEGRAM_TOKEN" || "$key" == "TELEGRAM_CHATID" || "$key" == "AUTO_UPDATE" || "$key" == "SKIP_UPDATE" || "$key" == "TELEGRAM_RETRY_MAX" || "$key" == "TELEGRAM_RETRY_BASE_DELAY" ]]; then
             printf -v "$key" "%s" "$val"
         fi
     done < "$CONFIG_FILE"
@@ -738,27 +747,52 @@ if [ "$CHAT_COUNT" -eq 1 ]; then
     send_to_telegram() {
         local chat_id="$TELEGRAM_TARGET_CHATID"
         local payload="${1:-}"
+        local attempt delay max_retries base_delay
+
+        max_retries="${TELEGRAM_RETRY_MAX:-3}"
+        base_delay="${TELEGRAM_RETRY_BASE_DELAY:-1}"
 
         # 🎨 Palette: concise, clear message with status feedback
         # Supports HTML parse_mode for rich formatting
         # ⚡ Bolt Optimization: Replaced external 'cat' binary in process substitution with native 'printf' built-in to eliminate fork/exec overhead.
-        if ! curl -s --connect-timeout 10 --max-time 30 --proto '=https' -K <(printf 'url="%s"\ndata-urlencode="chat_id=%s"\ndata-urlencode="parse_mode=HTML"\n' "$TELEGRAM_URL" "$chat_id") --data-urlencode "text@-" <<< "$payload" > /dev/null 2>&1; then
-            echo "Error: failed to send to chat $chat_id" >&2
-            return 1
-        fi
-        echo "$PALETTE_BROADCAST_POSTAMBLE"
+        # 🔨 Forge: Retry transient network errors (429/5xx) with exponential backoff
+        for ((attempt = 1; attempt <= max_retries; attempt++)); do
+            if curl -s --connect-timeout 10 --max-time 30 --proto '=https' -K <(printf 'url="%s"\ndata-urlencode="chat_id=%s"\ndata-urlencode="parse_mode=HTML"\n' "$TELEGRAM_URL" "$chat_id") --data-urlencode "text@-" <<< "$payload" > /dev/null 2>&1; then
+                echo "$PALETTE_BROADCAST_POSTAMBLE"
+                return 0
+            fi
+            if [ "$attempt" -lt "$max_retries" ]; then
+                delay=$((base_delay * (1 << (attempt - 1))))
+                sleep "$delay"
+            fi
+        done
+        echo "Error: failed to send to chat $chat_id after $max_retries attempts" >&2
+        return 1
     }
 else
     # Multiple recipients: iterate safely, export credentials only where needed
     send_to_telegram() {
         local payload="${1:-}"
         local error=0
+        local attempt delay max_retries base_delay
+        max_retries="${TELEGRAM_RETRY_MAX:-3}"
+        base_delay="${TELEGRAM_RETRY_BASE_DELAY:-1}"
         # 🛡️ Sentinel Security Fix: Un-export loop iterator to prevent leakage to child processes
         local chat_id; export -n chat_id
         for chat_id in "${TELEGRAM_TARGET_CHATS[@]}"; do
             # ⚡ Bolt Optimization: Replaced external 'cat' binary in process substitution with native 'printf' built-in to eliminate fork/exec overhead.
-            if ! curl -s --connect-timeout 10 --max-time 30 --proto '=https' -K <(printf 'url="%s"\ndata-urlencode="chat_id=%s"\ndata-urlencode="parse_mode=HTML"\n' "$TELEGRAM_URL" "$chat_id") --data-urlencode "text@-" <<< "$payload" > /dev/null 2>&1; then
-                echo "Error: failed to send to chat $chat_id" >&2
+            # 🔨 Forge: Retry transient network errors (429/5xx) with exponential backoff
+            for ((attempt = 1; attempt <= max_retries; attempt++)); do
+                if curl -s --connect-timeout 10 --max-time 30 --proto '=https' -K <(printf 'url="%s"\ndata-urlencode="chat_id=%s"\ndata-urlencode="parse_mode=HTML"\n' "$TELEGRAM_URL" "$chat_id") --data-urlencode "text@-" <<< "$payload" > /dev/null 2>&1; then
+                    break
+                fi
+                if [ "$attempt" -lt "$max_retries" ]; then
+                    delay=$((base_delay * (1 << (attempt - 1))))
+                    sleep "$delay"
+                fi
+            done
+            if [ "$attempt" -gt "$max_retries" ]; then
+                echo "Error: failed to send to chat $chat_id after $max_retries attempts" >&2
                 error=1
             fi
         done
