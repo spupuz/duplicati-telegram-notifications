@@ -339,8 +339,9 @@ auto_update() {
                 export UPDATED_FROM_VERSION="$SCRIPT_VERSION"
                 # 🔧 Re-export the credentials and variables for the self-reexec only: they were stripped from the
                 # environment above, but ENV-configured installs (Docker) have no config file to reload.
-                # 🛡️ Sentinel Security Fix: Explicitly re-export TELEGRAM_URL which was globally un-exported
-                export TELEGRAM_TOKEN TELEGRAM_CHATID TELEGRAM_URL
+                # TELEGRAM_URL is intentionally NOT re-exported: it embeds TELEGRAM_TOKEN (leak via
+                # /proc/<pid>/environ) and is rebuilt from TELEGRAM_TOKEN at line 160 after re-exec.
+                export TELEGRAM_TOKEN TELEGRAM_CHATID
                 local var; export -n var
                 for var in "${!DUPLICATI__@}"; do
                     export "$var"
