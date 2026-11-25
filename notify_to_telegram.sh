@@ -767,7 +767,13 @@ if [ "$CHAT_COUNT" -eq 1 ]; then
         # 🎨 Palette: concise, clear message with status feedback
         # Supports HTML parse_mode for rich formatting
         # ⚡ Bolt Optimization: Replaced external 'cat' binary in process substitution with native 'printf' built-in to eliminate fork/exec overhead.
-        if ! curl -s --connect-timeout 10 --max-time 30 --proto '=https' -K <(printf 'url="%s"\ndata-urlencode="chat_id=%s"\ndata-urlencode="parse_mode=HTML"\n' "$TELEGRAM_URL" "$chat_id") --data-urlencode "text@-" <<< "$payload" > /dev/null 2>&1; then
+        # 🛡️ Sentinel Security Fix: Treat any non-2xx HTTP response from the Telegram API as a
+        # delivery failure. Without --fail, curl exits 0 on 4xx/5xx (e.g. 401 Unauthorized for a
+        # revoked token, 429 rate limit, 5xx outage), so the script printed "Message sent to all
+        # recipients" even though nothing was delivered - a silent failure that hides backup
+        # notification loss. -sS keeps the error visible on stderr while -f makes the exit code
+        # reflect the HTTP status.
+        if ! curl -sSf --connect-timeout 10 --max-time 30 --proto '=https' -K <(printf 'url="%s"\ndata-urlencode="chat_id=%s"\ndata-urlencode="parse_mode=HTML"\n' "$TELEGRAM_URL" "$chat_id") --data-urlencode "text@-" <<< "$payload" > /dev/null 2>&1; then
             echo "Error: failed to send to chat $chat_id" >&2
             return 1
         fi
@@ -782,7 +788,9 @@ else
         local chat_id; export -n chat_id
         for chat_id in "${TELEGRAM_TARGET_CHATS[@]}"; do
             # ⚡ Bolt Optimization: Replaced external 'cat' binary in process substitution with native 'printf' built-in to eliminate fork/exec overhead.
-            if ! curl -s --connect-timeout 10 --max-time 30 --proto '=https' -K <(printf 'url="%s"\ndata-urlencode="chat_id=%s"\ndata-urlencode="parse_mode=HTML"\n' "$TELEGRAM_URL" "$chat_id") --data-urlencode "text@-" <<< "$payload" > /dev/null 2>&1; then
+            # 🛡️ Sentinel Security Fix: --fail makes curl return non-zero on 4xx/5xx so a
+            # rejected message (401/429/5xx) is reported as a failure instead of a false success.
+            if ! curl -sSf --connect-timeout 10 --max-time 30 --proto '=https' -K <(printf 'url="%s"\ndata-urlencode="chat_id=%s"\ndata-urlencode="parse_mode=HTML"\n' "$TELEGRAM_URL" "$chat_id") --data-urlencode "text@-" <<< "$payload" > /dev/null 2>&1; then
                 echo "Error: failed to send to chat $chat_id" >&2
                 error=1
             fi
