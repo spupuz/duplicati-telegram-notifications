@@ -513,13 +513,13 @@ function getResultLine () {
     local __resultvar="$1"
     # ⚡ Bolt Optimization: Replaced expensive `echo ... | sed ...` subshells with native bash string parameter expansion.
     # This avoids spawning child processes for string stripping, significantly improving script performance.
-    case "$DUPLICATI__EVENTNAME" in
+    case "${DUPLICATI__EVENTNAME:-Unknown Event}" in
         BEFORE) CURRENT_STATUS="Started" ;;
         AFTER)  CURRENT_STATUS="Finished" ;;
-        *)      CURRENT_STATUS="$DUPLICATI__EVENTNAME" ;;
+        *)      CURRENT_STATUS="${DUPLICATI__EVENTNAME:-Unknown Event}" ;;
     esac
 
-    case "$DUPLICATI__PARSED_RESULT" in
+    case "${DUPLICATI__PARSED_RESULT:-Unknown Result}" in
         Unknown) RESULT_ICON="🟣" ;;
         Success) RESULT_ICON="✅" ;;
         Warning) RESULT_ICON="⚠️" ;;
@@ -533,7 +533,7 @@ function getResultLine () {
     escapeHTML "${DUPLICATI__OPERATIONNAME:-Unknown Operation}" safe_op_name
     escapeHTML "${CURRENT_STATUS:-Unknown Status}" safe_status
     escapeHTML "${DUPLICATI__PARSED_RESULT:-Unknown Result}" safe_result
-    escapeHTML "$Duration" safe_duration
+    escapeHTML "${Duration:-00:00:00}" safe_duration
 
     # ⚡ Bolt Optimization: Pre-formatted string to avoid runtime loop trimming.
     # 🎨 Palette UX Enhancement: Dynamic header icon for better glanceability.
@@ -667,7 +667,7 @@ function getOperationBackup () {
 }
 
 # Generate message content
-if [ "$DUPLICATI__EVENTNAME" == "AFTER" ]; then
+if [ "${DUPLICATI__EVENTNAME:-}" == "AFTER" ]; then
     # ⚡ Bolt Optimization: Call parseResultFile once globally to avoid redundant disk I/O,
     # and use native bash parameter expansion to extract Duration without expensive grep/sed/tr subshells.
     parseResultFile
@@ -692,10 +692,10 @@ if [ "$DUPLICATI__EVENTNAME" == "AFTER" ]; then
     fi
 else
     # ⚡ Bolt Optimization: Replaced `echo | sed` subshell with native bash `case` statement to prevent fork/exec overhead.
-    case "$DUPLICATI__EVENTNAME" in
+    case "${DUPLICATI__EVENTNAME:-Unknown Event}" in
         BEFORE) CURRENT_STATUS="Started" ;;
         AFTER)  CURRENT_STATUS="Finished" ;;
-        *)      CURRENT_STATUS="$DUPLICATI__EVENTNAME" ;;
+        *)      CURRENT_STATUS="${DUPLICATI__EVENTNAME:-Unknown Event}" ;;
     esac
 
     safe_backup_name=""
@@ -722,7 +722,7 @@ fi
 
 # Help is already handled at the top of the script; continue normal flow.
 # Send message to Telegram with HTML formatting
-if [ "$DUPLICATI__EVENTNAME" == "AFTER" ]; then
+if [ "${DUPLICATI__EVENTNAME:-}" == "AFTER" ]; then
     MESSAGE+="
 </pre>"
 fi
@@ -738,8 +738,8 @@ $tags
 "
 
 # Append script version info to the message
-if [ -n "$UPDATED_FROM_VERSION" ] && [ "$UPDATED_FROM_VERSION" != "$SCRIPT_VERSION" ]; then
-    escapeHTML "$UPDATED_FROM_VERSION" safe_updated_version
+if [ -n "${UPDATED_FROM_VERSION:-}" ] && [ "${UPDATED_FROM_VERSION:-}" != "$SCRIPT_VERSION" ]; then
+    escapeHTML "${UPDATED_FROM_VERSION:-}" safe_updated_version
     escapeHTML "$SCRIPT_VERSION" safe_script_version
     MESSAGE+="🔄 <b>Script updated:</b> v${safe_updated_version} → v${safe_script_version}"
 else
