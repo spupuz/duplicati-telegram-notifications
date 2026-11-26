@@ -17,6 +17,7 @@ An optimized shell script designed to integrate rich, beautiful, and aesthetic T
 *   **Duration Tracking**: Displays the backup duration (⏱) directly in the notification.
 *   **Auto-Update**: Automatically checks GitHub for newer versions on each run and updates itself (can be disabled via `AUTO_UPDATE="false"`).
 *   **Version Awareness**: Every notification reports the running script version and, when the script has just auto-updated, shows the exact version transition (e.g. `v1.0.1 → v1.0.2`).
+*   **Resilient Delivery**: Automatic retry with exponential backoff for transient network failures and Telegram rate limits (configurable via `TELEGRAM_MAX_RETRIES` and `TELEGRAM_RETRY_BASE_DELAY`).
 
 ---
 

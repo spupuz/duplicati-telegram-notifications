@@ -762,6 +762,49 @@ export -n MESSAGE Duration TEMP_MSG CURRENT_STATUS safe_backup_name safe_op_name
 # Use TELNET_CHATID or TELGRAM_TARGET_CHATID for current compatibility.
 # Added TELEGRAM_CHAT_IDS export to support future multi-recipient logic.
 
+# 🔨 Forge: Retry configuration for resilient delivery
+# Retry on transient failures (network blips, rate limits) with exponential backoff
+TELEGRAM_MAX_RETRIES="${TELEGRAM_MAX_RETRIES:-3}"
+TELEGRAM_RETRY_BASE_DELAY="${TELEGRAM_RETRY_BASE_DELAY:-2}"  # seconds
+
+# Helper: send with retry and exponential backoff
+# Usage: _send_with_retry <chat_id> <payload>
+_send_with_retry() {
+    local chat_id="$1"
+    local payload="$2"
+    local attempt=1
+    local delay="$TELEGRAM_RETRY_BASE_DELAY"
+
+    while [ "$attempt" -le "$TELEGRAM_MAX_RETRIES" ]; do
+        # 🛡️ Sentinel Security Fix: --fail makes curl return non-zero on 4xx/5xx
+        # ⚡ Bolt Optimization: Native printf built-in eliminates fork/exec for config
+        if curl -sSf --connect-timeout 10 --max-time 30 --proto '=https' \
+            -K <(printf 'url="%s"\ndata-urlencode="chat_id=%s"\ndata-urlencode="parse_mode=HTML"\n' "$TELEGRAM_URL" "$chat_id") \
+            --data-urlencode "text@-" <<< "$payload" > /dev/null 2>&1; then
+            return 0
+        fi
+
+        local exit_code=$?
+        # Don't retry on 4xx client errors (except 429 rate limit) — they won't succeed on retry
+        if [ "$exit_code" -eq 22 ]; then
+            # curl --fail returns 22 for 4xx/5xx; check if we can get the HTTP code
+            # For simplicity, retry only on 429 (rate limit) and 5xx; fail fast on other 4xx
+            # We can't easily distinguish without verbose output, so retry on all failures
+            # but cap at max retries
+            :
+        fi
+
+        if [ "$attempt" -lt "$TELEGRAM_MAX_RETRIES" ]; then
+            echo "Warning: send to chat $chat_id failed (attempt $attempt/$TELEGRAM_MAX_RETRIES), retrying in ${delay}s..." >&2
+            sleep "$delay"
+            delay=$((delay * 2))
+        fi
+        attempt=$((attempt + 1))
+    done
+
+    return 1
+}
+
 if [ "$CHAT_COUNT" -eq 1 ]; then
     # Single recipient: use existing TELEGRAM_TARGET_CHATID
     send_to_telegram() {
@@ -770,15 +813,8 @@ if [ "$CHAT_COUNT" -eq 1 ]; then
 
         # 🎨 Palette: concise, clear message with status feedback
         # Supports HTML parse_mode for rich formatting
-        # ⚡ Bolt Optimization: Replaced external 'cat' binary in process substitution with native 'printf' built-in to eliminate fork/exec overhead.
-        # 🛡️ Sentinel Security Fix: Treat any non-2xx HTTP response from the Telegram API as a
-        # delivery failure. Without --fail, curl exits 0 on 4xx/5xx (e.g. 401 Unauthorized for a
-        # revoked token, 429 rate limit, 5xx outage), so the script printed "Message sent to all
-        # recipients" even though nothing was delivered - a silent failure that hides backup
-        # notification loss. -sS keeps the error visible on stderr while -f makes the exit code
-        # reflect the HTTP status.
-        if ! curl -sSf --connect-timeout 10 --max-time 30 --proto '=https' -K <(printf 'url="%s"\ndata-urlencode="chat_id=%s"\ndata-urlencode="parse_mode=HTML"\n' "$TELEGRAM_URL" "$chat_id") --data-urlencode "text@-" <<< "$payload" > /dev/null 2>&1; then
-            echo "Error: failed to send to chat $chat_id" >&2
+        if ! _send_with_retry "$chat_id" "$payload"; then
+            echo "Error: failed to send to chat $chat_id after $TELEGRAM_MAX_RETRIES attempt(s)" >&2
             return 1
         fi
         echo "$PALETTE_BROADCAST_POSTAMBLE"
@@ -791,11 +827,8 @@ else
         # 🛡️ Sentinel Security Fix: Un-export loop iterator to prevent leakage to child processes
         local chat_id; export -n chat_id
         for chat_id in "${TELEGRAM_TARGET_CHATS[@]}"; do
-            # ⚡ Bolt Optimization: Replaced external 'cat' binary in process substitution with native 'printf' built-in to eliminate fork/exec overhead.
-            # 🛡️ Sentinel Security Fix: --fail makes curl return non-zero on 4xx/5xx so a
-            # rejected message (401/429/5xx) is reported as a failure instead of a false success.
-            if ! curl -sSf --connect-timeout 10 --max-time 30 --proto '=https' -K <(printf 'url="%s"\ndata-urlencode="chat_id=%s"\ndata-urlencode="parse_mode=HTML"\n' "$TELEGRAM_URL" "$chat_id") --data-urlencode "text@-" <<< "$payload" > /dev/null 2>&1; then
-                echo "Error: failed to send to chat $chat_id" >&2
+            if ! _send_with_retry "$chat_id" "$payload"; then
+                echo "Error: failed to send to chat $chat_id after $TELEGRAM_MAX_RETRIES attempt(s)" >&2
                 error=1
             fi
         done
