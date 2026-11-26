@@ -468,17 +468,21 @@ function getFriendlyFileSize() {
 
 # Securely parse the result file to avoid command injection
 function parseResultFile () {
+    # 🛡️ Sentinel Security Fix: Explicitly unset any pre-existing RES_* variables
+    # before any early return. This prevents inherited environment variables from
+    # manipulating the script logic if the external backup log is missing, unreadable,
+    # or a symlink. Previously the unset happened after the symlink/regular-file
+    # checks, so an attacker who could set RES_Failed/RES_Details in the environment
+    # (e.g. via a compromised parent process) could inject forged error details into
+    # the Telegram notification whenever the result file was absent or invalid.
+    local var; export -n var
+    for var in "${!RES_@}"; do unset "$var"; done
     # 🛡️ Sentinel Security Fix: Refuse to read a symlinked result file (CWE-59) to prevent arbitrary file read / information disclosure.
     if [[ -L "$DUPLICATI__RESULTFILE" ]]; then
         echo "Error: DUPLICATI__RESULTFILE must not be a symlink: $DUPLICATI__RESULTFILE" >&2
         return 1
     fi
     [ -f "$DUPLICATI__RESULTFILE" ] || return
-    # 🛡️ Sentinel Security Fix: Explicitly unset any pre-existing variables matching the RES_ prefix
-    # before parsing. This prevents inherited environment variables from manipulating the script logic
-    # if the external backup log omits those keys.
-    local var; export -n var
-    for var in "${!RES_@}"; do unset "$var"; done
     # 🛡️ Sentinel Security Fix: Un-export loop iterators to prevent Information Disclosure to child processes
     local key val; export -n key val
     # ⚡ Bolt Optimization: Use process substitution with grep to instantly strip unparseable lines
