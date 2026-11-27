@@ -5,6 +5,16 @@ umask 077
 # Released "AS IS" without any warranty of any kind.
 #########################################################################
 
+# 🛡️ Sentinel Security Fix: Restrict PATH to a trusted set of directories before
+# invoking any external binary. The script shells out to curl, grep, mktemp, mv,
+# chmod, diff, sort, sha256sum, stat, id, date, cat and others by name. If PATH is
+# inherited from an untrusted parent (e.g. a compromised or misconfigured process
+# launching Duplicati), an attacker can shadow any of these with a malicious binary
+# that executes with the script's privileges (typically root). Pinning PATH to the
+# standard system directories closes this untrusted-search-path vector (CWE-426).
+PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH
+
 # 🛡️ Sentinel Security Fix: Early un-export of inherited variables.
 # This prevents them from being passed to child processes (like cat)
 # invoked before the configuration file is parsed or help is displayed.
